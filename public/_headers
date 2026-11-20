@@ -1,5 +1,4 @@
 /*
-  # HSTS inicial de 24 horas. Ampliar tras comprobar HTTPS estable.
   Strict-Transport-Security: max-age=86400
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
