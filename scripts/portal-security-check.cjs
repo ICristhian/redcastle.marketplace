@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const read=p=>fs.readFileSync(p,"utf8");
-const files=["public/portal.html","public/admin.html","public/js/config.js","public/js/backend.js","public/js/portal.js","public/js/admin.js","supabase/migrations/202611230001_portal.sql"];
+const files=["public/portal.html","public/admin.html","public/js/config.js","public/js/backend.js","public/js/portal.js","public/js/admin.js","supabase/migrations/20261123190100_portal.sql"];
 for(const p of files)assert.ok(fs.existsSync(p),p);
 const sql=read(files[6]),cfg=read("public/js/config.js"),backend=read("public/js/backend.js");
 for(const table of ["profiles","products","inventory","cart_items","reservations","reservation_items"]){
