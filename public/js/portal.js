@@ -1,5 +1,4 @@
 import {APP_CONFIG} from "./config.js";
-import {APP_CONFIG} from "./config.js";
 import {isConfigured,supabase,formatMoney,safeError,notify,whatsappLink,node} from "./backend.js";
 
 const $=id=>document.getElementById(id);
