@@ -170,9 +170,9 @@ grant execute on function private.get_catalog() to anon,authenticated;
 create or replace function public.get_catalog()
 returns table(id uuid,sku text,name text,description text,category text,price numeric,available integer)
 language sql stable security invoker set search_path = ''
-as $
+as $$
   select * from private.get_catalog();
-$;
+$$;
 revoke all on function public.get_catalog() from public;
 grant execute on function public.get_catalog() to anon,authenticated;
 
@@ -313,14 +313,14 @@ grant execute on function private.set_reservation_status(uuid,text) to authentic
 create or replace function public.reserve_cart()
 returns table(reservation_id uuid,reservation_code text,reservation_total numeric,expires_at timestamptz)
 language sql volatile security invoker set search_path = ''
-as $
+as $$
   select * from private.reserve_cart();
-$;
+$$;
 create or replace function public.set_reservation_status(target_id uuid,new_status text)
 returns void language sql volatile security invoker set search_path = ''
-as $
+as $$
   select private.set_reservation_status(target_id,new_status);
-$;
+$$;
 revoke all on function public.reserve_cart() from public,anon;
 revoke all on function public.set_reservation_status(uuid,text) from public,anon;
 grant execute on function public.reserve_cart() to authenticated;
