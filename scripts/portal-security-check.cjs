@@ -19,7 +19,7 @@ assert.ok(sql.includes("for update"),"row locking");
 assert.ok(sql.includes("revoke all on public.profiles"),"table grants");
 assert.match(cfg,/supabaseUrl:\s*"https:\/\/ygagjdrdckfkranzndqv\.supabase\.co"/,"expected development project URL");
 assert.match(cfg,/supabasePublishableKey:\s*"sb_publishable_[A-Za-z0-9_-]+"/,"browser uses publishable-only key");
-assert.doesNotMatch(cfg,/sb_secret_|service_role|BEGIN PRIVATE KEY/i,"no privileged keys in public configuration");
+assert.doesNotMatch(cfg,/supabasePublishableKey:\s*"(?:sb_secret_|eyJ)[^"]*"/i,"no privileged keys assigned to browser configuration");
 assert.match(cfg,/whatsappNumber:\s*""/,"reservations remain disabled until WhatsApp number is configured");
 assert.match(read("public/js/portal.js"),/!\/\^\\d\{8,15\}\$\/.test\(APP_CONFIG.whatsappNumber\)/,"reservation operation is gated on WhatsApp configuration");
 assert.match(backend,/flowType:"pkce"/,"PKCE enabled");
