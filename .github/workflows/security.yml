@@ -2,7 +2,7 @@ name: Security checks
 
 on:
   push:
-    branches: [main, "security/**"]
+    branches: [main, "security/**", "feature/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -26,5 +26,12 @@ jobs:
           persist-credentials: false
       - name: Check JavaScript syntax
         run: node --check public/js/store.js
+      - name: Check JavaScript module syntax
+        run: |
+          for file in public/js/config.js public/js/backend.js public/js/portal.js public/js/admin.js; do
+            node --input-type=module --check < "$file"
+          done
       - name: Check site security policies
         run: node scripts/security-check.cjs
+      - name: Check portal security assertions
+        run: node scripts/portal-security-check.cjs
