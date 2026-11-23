@@ -6,15 +6,38 @@ export function isConfigured() {
   return enabled && /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(supabaseUrl)
     && typeof supabasePublishableKey === "string" && supabasePublishableKey.length > 20;
 }
+const sdkSources = Object.freeze([
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/+esm",
+  "https://esm.sh/@supabase/supabase-js@2.57.0?bundle"
+]);
+
+async function importSdk() {
+  // Los dos proveedores usan una versión exacta. Nunca se carga una versión "latest".
+  // Una caída del CDN principal no debe deshabilitar el inicio de sesión.
+  for (const source of sdkSources) {
+    try {
+      const module = await import(source);
+      if (typeof module.createClient === "function") return module;
+    } catch (error) {
+      console.warn("Redcastle: no se pudo cargar un origen de SDK; probando alternativa.", error?.name || "NetworkError");
+    }
+  }
+  throw new Error("SDK_IMPORT_FAILED");
+}
+
 export async function supabase() {
-  if (!isConfigured()) throw new Error("Portal aún no configurado: conecta Supabase primero.");
-  if (!clientPromise) clientPromise = (async () => {
-    // Versión fijada. Solo carga la librería después de configurar el proyecto.
-    const sdk = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/+esm");
-    return sdk.createClient(APP_CONFIG.supabaseUrl,APP_CONFIG.supabasePublishableKey,{
-      auth: {flowType:"pkce",detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}
+  if (!isConfigured()) throw new Error("PORTAL_NOT_CONFIGURED");
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      const sdk = await importSdk();
+      return sdk.createClient(APP_CONFIG.supabaseUrl,APP_CONFIG.supabasePublishableKey,{
+        auth: {flowType:"pkce",detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}
+      });
+    })().catch(error => {
+      clientPromise = undefined; // Permite reintentar tras un fallo temporal de red.
+      throw error;
     });
-  })();
+  }
   return clientPromise;
 }
 export function formatMoney(value) {
@@ -24,6 +47,8 @@ export function safeError(error) {
   // Nunca renderizamos stack traces ni respuestas privadas del servidor en pantalla.
   const msg=String(error?.message || error || "");
   const known={
+    SDK_IMPORT_FAILED:"No se pudo cargar el módulo de Supabase. Revisa tu conexión, bloqueadores y la consola del navegador.",
+    PORTAL_NOT_CONFIGURED:"El portal todavía no tiene conexión configurada.",
     AUTH_REQUIRED:"Inicia sesión para continuar.",
     EMPTY_CART:"Tu carrito está vacío.",
     PRODUCT_UNAVAILABLE:"Un producto ya no está disponible.",
