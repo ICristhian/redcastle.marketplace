@@ -155,7 +155,7 @@ for select to authenticated using (
 -- Ninguna escritura directa en reservas; usar RPCs transaccionales.
 
 -- Catálogo público: muestra solo stock disponible, nunca tablas privadas completas.
-create or replace function public.get_catalog()
+create or replace function private.get_catalog()
 returns table(id uuid,sku text,name text,description text,category text,
               price numeric,available integer)
 language sql stable security definer set search_path = ''
@@ -165,6 +165,14 @@ as $$
   from public.products p join public.inventory i on i.product_id=p.id
   where p.active=true order by p.name;
 $$;
+revoke all on function private.get_catalog() from public, anon, authenticated;
+grant execute on function private.get_catalog() to anon,authenticated;
+create or replace function public.get_catalog()
+returns table(id uuid,sku text,name text,description text,category text,price numeric,available integer)
+language sql stable security invoker set search_path = ''
+as $
+  select * from private.get_catalog();
+$;
 revoke all on function public.get_catalog() from public;
 grant execute on function public.get_catalog() to anon,authenticated;
 
@@ -194,7 +202,7 @@ end;
 $$;
 
 -- Una llamada reserva el carrito completo; si un producto no tiene stock, rollback total.
-create or replace function public.reserve_cart()
+create or replace function private.reserve_cart()
 returns table(reservation_id uuid,reservation_code text,reservation_total numeric,expires_at timestamptz)
 language plpgsql security definer set search_path = ''
 as $$
@@ -247,7 +255,7 @@ end;
 $$;
 
 -- El administrador modifica estados; el inventario se libera o consume de forma atómica.
-create or replace function public.set_reservation_status(target_id uuid,new_status text)
+create or replace function private.set_reservation_status(target_id uuid,new_status text)
 returns void language plpgsql security definer set search_path = ''
 as $$
 declare r record; item record;
@@ -296,6 +304,23 @@ grant insert,update,delete on public.cart_items to authenticated;
 grant insert,update on public.products to authenticated;
 grant update on public.inventory to authenticated;
 
+-- Private elevated functions stay outside PostgREST exposed schemas.
+revoke all on function private.reserve_cart() from public,anon,authenticated;
+revoke all on function private.set_reservation_status(uuid,text) from public,anon,authenticated;
+grant execute on function private.reserve_cart() to authenticated;
+grant execute on function private.set_reservation_status(uuid,text) to authenticated;
+-- Public interfaces are SECURITY INVOKER; all checks execute server-side.
+create or replace function public.reserve_cart()
+returns table(reservation_id uuid,reservation_code text,reservation_total numeric,expires_at timestamptz)
+language sql volatile security invoker set search_path = ''
+as $
+  select * from private.reserve_cart();
+$;
+create or replace function public.set_reservation_status(target_id uuid,new_status text)
+returns void language sql volatile security invoker set search_path = ''
+as $
+  select private.set_reservation_status(target_id,new_status);
+$;
 revoke all on function public.reserve_cart() from public,anon;
 revoke all on function public.set_reservation_status(uuid,text) from public,anon;
 grant execute on function public.reserve_cart() to authenticated;
