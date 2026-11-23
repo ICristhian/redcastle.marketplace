@@ -5,7 +5,7 @@
 create extension if not exists pgcrypto;
 create schema if not exists private;
 revoke all on schema private from public;
-grant usage on schema private to authenticated;
+grant usage on schema private to anon,authenticated; -- Functions remain outside exposed API schemas.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
