@@ -206,7 +206,12 @@ declare
   available_now integer;
 begin
   if caller is null then raise exception 'AUTH_REQUIRED'; end if;
+  -- Serializa solicitudes simultáneas del mismo usuario y evita duplicados.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(caller::text,0));
   perform private.release_expired();
+  if (select count(*) from public.reservations
+      where user_id=caller and status in ('pending_contact','confirmed')) >= 3
+  then raise exception 'ACTIVE_RESERVATION_LIMIT'; end if;
   if not exists(select 1 from public.cart_items where user_id=caller)
   then raise exception 'EMPTY_CART'; end if;
 
@@ -297,3 +302,11 @@ grant execute on function public.set_reservation_status(uuid,text) to authentica
 -- IMPORTANTE: asignar primer administrador manualmente desde SQL Editor,
 -- usando el UUID de Authentication > Users (nunca un botón público).
 -- update public.profiles set role='admin' where id='<UUID_REAL_DEL_ADMIN>';
+
+-- Los helpers de esquema privado no deben invocarse desde el cliente.
+revoke all on function private.create_customer_profile() from public, anon, authenticated;
+revoke all on function private.create_product_inventory() from public, anon, authenticated;
+revoke all on function private.release_expired() from public, anon, authenticated;
+
+-- Esta migración NO configura por sí sola un job programado para expirar
+-- reservas sin tráfico. Activar pg_cron o un cron seguro antes de producción.
