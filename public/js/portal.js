@@ -1,4 +1,5 @@
 import {APP_CONFIG} from "./config.js";
+import {APP_CONFIG} from "./config.js";
 import {isConfigured,supabase,formatMoney,safeError,notify,whatsappLink,node} from "./backend.js";
 
 const $=id=>document.getElementById(id);
@@ -90,7 +91,7 @@ function renderCart(){
   }
   if(!cart.length)box.append(node("p",user?"Todavía no agregaste productos.":"Inicia sesión para tener un carrito personal.","dim"));
   $("cartTotal").textContent=formatMoney(total);
-  $("reserve").disabled=!user||!cart.length;
+  $("reserve").disabled=!user||!cart.length||!/^\d{8,15}$/.test(APP_CONFIG.whatsappNumber);
 }
 async function addToCart(product){
   if(!user)return notify("Inicia sesión para utilizar tu carrito.",true);
@@ -140,6 +141,10 @@ function renderReservations(){
   }
 }
 async function reserve(){
+  if(!/^\d{8,15}$/.test(APP_CONFIG.whatsappNumber)){
+    notify("Las reservas aún están deshabilitadas hasta configurar WhatsApp.",true);
+    return;
+  }
   const b=$("reserve");b.disabled=true;b.textContent="Validando disponibilidad…";
   try{
     const {data,error}=await api.rpc("reserve_cart");
@@ -153,7 +158,7 @@ async function reserve(){
     if(url){window.location.assign(url);}
     else {setNotice("Reserva "+reservation.reservation_code+" registrada. Falta configurar WhatsApp para continuar.", "ok");$("reservas").scrollIntoView({behavior:"smooth"});}
   }catch(error){notify(safeError(error),true);}
-  finally{b.textContent="Solicitar reserva ↗";b.disabled=!cart.length||!user;}
+  finally{b.textContent="Solicitar reserva ↗";b.disabled=!cart.length||!user||!/^\d{8,15}$/.test(APP_CONFIG.whatsappNumber);}
 }
 async function oauth(provider){
   if(!api)return;
@@ -181,7 +186,7 @@ async function main(){
   try{
     api=await supabase();await refreshSession();
     await loadCatalog();await loadCart();await loadReservations();
-    setNotice("Sistema conectado. Las reservas se registran y validan contra inventario.","ok");
+    setNotice(/^\d{8,15}$/.test(APP_CONFIG.whatsappNumber)?"Sistema conectado. Las reservas se registran y validan contra inventario.":"Supabase conectado. Puedes probar el acceso con Google y el carrito; las reservas están deshabilitadas hasta configurar WhatsApp.","ok");
     api.auth.onAuthStateChange(()=>{setTimeout(async()=>{try{await refreshSession();await loadCatalog();await loadCart();await loadReservations();}catch{notify("Error al actualizar la sesión.",true);}},0);});
   }catch(error){setNotice("Error al conectar con la plataforma. Comprueba la configuración y permisos.","error");notify(safeError(error),true);}
 }
