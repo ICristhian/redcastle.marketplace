@@ -182,11 +182,37 @@ async function main(){
     setNotice("Portal preparado, pero aún no conectado. Configura Supabase y los proveedores de acceso antes de habilitar reservas.","error");
     $("googleLogin").disabled=true;$("microsoftLogin").disabled=true;$("signIn").disabled=true;return;
   }
-  try{
-    api=await supabase();await refreshSession();
-    await loadCatalog();await loadCart();await loadReservations();
-    setNotice(/^\d{8,15}$/.test(APP_CONFIG.whatsappNumber)?"Sistema conectado. Las reservas se registran y validan contra inventario.":"Supabase conectado. Puedes probar el acceso con Google y el carrito; las reservas están deshabilitadas hasta configurar WhatsApp.","ok");
-    api.auth.onAuthStateChange(()=>{setTimeout(async()=>{try{await refreshSession();await loadCatalog();await loadCart();await loadReservations();}catch{notify("Error al actualizar la sesión.",true);}},0);});
-  }catch(error){setNotice("Error al conectar con la plataforma. Comprueba la configuración y permisos.","error");notify(safeError(error),true);}
+  try {
+    api=await supabase();
+  } catch(error) {
+    setNotice("No se pudo iniciar la biblioteca de conexión: "+safeError(error),"error");
+    notify(safeError(error),true);
+    return;
+  }
+  // Un fallo del catálogo no debe bloquear OAuth ni un fallo de sesión debe
+  // deshabilitar la lectura pública del catálogo.
+  try { await refreshSession(); }
+  catch(error) {
+    setNotice("No se pudo leer la sesión; puedes intentar iniciar sesión con Google.","error");
+    console.warn("Redcastle: fallo al consultar sesión (sin datos personales).",error?.code||error?.name||"AuthError");
+  }
+  let catalogFailed=false;
+  try { await loadCatalog(); }
+  catch(error) {
+    catalogFailed=true;
+    $("catalogGrid").replaceChildren(node("div","El catálogo no está disponible temporalmente.","empty"));
+    console.warn("Redcastle: fallo al consultar catálogo.",error?.code||error?.name||"CatalogError");
+  }
+  try { await loadCart(); await loadReservations(); }
+  catch(error) { console.warn("Redcastle: fallo al cargar datos del cliente.",error?.code||error?.name||"DataError"); }
+  if(catalogFailed) {
+    setNotice("Supabase inició, pero el catálogo no respondió. Puedes probar el acceso con Google; revisaremos los permisos del catálogo.","error");
+  } else {
+    setNotice(/^\\d{8,15}$/.test(APP_CONFIG.whatsappNumber)?"Sistema conectado. Las reservas se registran y validan contra inventario.":"Supabase conectado. Puedes probar el acceso con Google y el carrito; las reservas están deshabilitadas hasta configurar WhatsApp.","ok");
+  }
+  api.auth.onAuthStateChange(()=>{setTimeout(async()=>{
+    try { await refreshSession(); await loadCart(); await loadReservations(); renderCatalog(); }
+    catch(error) { console.warn("Redcastle: no se pudo actualizar la sesión.",error?.code||error?.name||"AuthError"); }
+  },0);});
 }
 main();
