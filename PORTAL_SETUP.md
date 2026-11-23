@@ -18,7 +18,7 @@ Este cambio está **solo en la rama `feature/reservation-portal`**. Producción 
 
 1. Crear proyecto en https://supabase.com/ y conservar a salvo credenciales administrativas.
 2. Usar un proyecto de **desarrollo** inicialmente.
-3. En Supabase → SQL Editor, ejecutar `supabase/migrations/202611230001_portal.sql`.
+3. En Supabase → SQL Editor, ejecutar `supabase/migrations/20261123190100_portal.sql`.
 4. Revisar que las seis tablas tengan RLS habilitado y que las políticas coincidan con las definidas.
 5. En Authentication → Providers, habilitar **Google** y **Azure (Microsoft)**.
 6. Configurar el enlace de redirección de proveedores:
