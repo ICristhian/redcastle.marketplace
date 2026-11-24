@@ -41,10 +41,11 @@ test("JavaScript sin eval/innerHTML",!/(?:\beval\s*\(|\binnerHTML\b|\bouterHTML\
 test("Carrito usa nodos de texto seguros",js.includes(".textContent") && !js.includes("innerHTML"));
 test("Carrito persistente en Supabase",js.includes('from("cart_items")') && js.includes('rpc("reserve_cart")'));
 test("Carrito restringe cantidades",js.includes("Number.isInteger(quantity)") && js.includes("quantity>10"));
-test("Sin checkout ni pagos en línea",!html.includes("Finalizar compra") && html.includes('id="reserve"') && html.includes("Solicitar reserva"));
+test("Sin checkout ni pagos en línea",!html.includes("Finalizar compra") && html.includes('id="reserve"') && html.includes("Enviar solicitud"));
 test("Reserva inicia deshabilitada sin carrito",/<button class="checkout-button" id="reserve" type="button" disabled>/.test(html));
 test("Sin recursos externos en HTML",!/<(?:script|link)\b[^>]*https?:\/\//i.test(html));
 test("La raíz y el portal usan la misma tienda",html===read("portal.html"));
+test("Nosotros incluye mapa Google y horarios",html.includes('id="nosotros"') && html.includes("9:00 a. m. – 3:00 p. m.") && csp.includes("frame-src https://www.google.com"));
 test("El carrito es lateral",read("css/retail.css").includes("inset:0 0 0 auto"));
 test("Galería cargada desde Supabase",js.includes("product_images") && js.includes('getPublicUrl'));
 test("Ilustraciones SVG no incluyen scripts",!/<script\b|onload\s*=|javascript:/i.test(svg));
