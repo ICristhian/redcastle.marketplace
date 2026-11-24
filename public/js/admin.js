@@ -125,113 +125,196 @@ async function uploadObject(product,file){
   if(error)throw error;
   return path;
 }
+function setImageNotice(text,kind=""){
+  const el=$("imageNotice");
+  el.textContent=text;
+  el.className="fine image-notice "+kind;
+}
+function imagePublicUrl(img){
+  return api.storage.from(IMAGE_BUCKET).getPublicUrl(img.storage_path).data.publicUrl;
+}
+function friendlyImageError(error){
+  if(error?.message==="IMAGE_LIMIT_REACHED")return "Este producto ya tiene ocho imágenes. Elimina o reemplaza una para continuar.";
+  if(error?.message==="IMAGE_INVALID_FORMAT_OR_SIZE")return "Usa archivos JPG, PNG o WEBP, de hasta 3 MB cada uno.";
+  return safeError(error);
+}
 async function loadProductImages(){
   if(!selectedProduct)return;
-  const {data,error}=await api.from("product_images").select("id,product_id,storage_path,alt_text,sort_order,is_primary,created_at")
-    .eq("product_id",selectedProduct.id).order("sort_order",{ascending:true}).order("created_at");
+  const product=selectedProduct;
+  const {data,error}=await api.from("product_images")
+    .select("id,product_id,storage_path,alt_text,sort_order,is_primary,created_at")
+    .eq("product_id",product.id)
+    .order("sort_order",{ascending:true}).order("created_at",{ascending:true});
   if(error)throw error;
+  if(product.id!==selectedProduct?.id)return; // Ignore a stale answer from a different product.
   const imgs=data||[];
+  const count=imgs.length;
+  const remaining=Math.max(0,8-count);
+  $("imageCount").textContent=count+" de 8 imágenes · "+remaining+" espacios disponibles";
+  $("imageFiles").disabled=remaining===0;
+  $("submitImages").disabled=remaining===0||imagesBusy;
   const parent=$("imagesList");parent.replaceChildren();
-  if(!imgs.length)parent.append(node("p","No hay imágenes. Añade la primera para el catálogo.","fine"));
+  if(!imgs.length)parent.append(node("p","No hay fotografías. Selecciona una o varias imágenes para empezar.","fine"));
   for(const im of imgs){
     const item=node("div",undefined,"admin-image-item");
-    const url=api.storage.from(IMAGE_BUCKET).getPublicUrl(im.storage_path).data.publicUrl;
-    const preview=node("img");preview.src=url;preview.alt=im.alt_text||selectedProduct.name;
-    preview.loading="lazy";item.append(preview);
-    if(im.is_primary)item.append(node("strong","Imagen principal","image-primary-label"));
+    const url=imagePublicUrl(im);
+    const preview=node("img");
+    preview.src=url;preview.alt=im.alt_text||product.name;
+    preview.loading="eager";preview.decoding="async";
+    preview.addEventListener("error",()=>{
+      preview.replaceWith(node("p","No se puede mostrar la miniatura en este navegador.","image-preview-error"));
+      setImageNotice("Las imágenes están registradas, pero Opera no pudo cargar una miniatura. Usa «Abrir original» para comprobar el acceso.","warning");
+    });
+    item.append(preview);
+    if(im.is_primary)item.append(node("strong","✓ Imagen principal del catálogo","image-primary-label"));
     const tools=node("div",undefined,"admin-image-tools");
+    const open=node("a","Abrir original ↗","button secondary");
+    open.href=url;open.target="_blank";open.rel="noopener noreferrer";tools.append(open);
     if(!im.is_primary){
-      const primary=action("Elegir principal",async()=>{
-        if(imagesBusy)return;
-        imagesBusy=true;
+      const primary=action("★ Usar como imagen principal",async()=>{
+        if(imagesBusy)return;imagesBusy=true;
+        primary.disabled=true;
+        setImageNotice("Actualizando imagen principal…");
         try{
-          const {error}=await api.rpc("set_primary_product_image",{p_product_id:selectedProduct.id,p_image_id:im.id});
+          const {error}=await api.rpc("set_primary_product_image",{
+            p_product_id:product.id,p_image_id:im.id
+          });
           if(error)throw error;
-          await loadProductImages();notify("Imagen principal actualizada.");
-        }catch(e){notify(safeError(e),true);}finally{imagesBusy=false;}
+          await loadProductImages();
+          setImageNotice("Imagen principal actualizada. Vuelve al catálogo y recarga la tienda para comprobarla.","ok");
+          notify("Imagen principal actualizada.");
+        }catch(e){
+          setImageNotice("No se pudo cambiar la imagen principal: "+friendlyImageError(e),"error");
+          notify(friendlyImageError(e),true);
+        }finally{imagesBusy=false;primary.disabled=false;}
       });
       tools.append(primary);
     }
-    const labelInput=node("input");labelInput.type="text";labelInput.maxLength=180;labelInput.value=im.alt_text||"";
-    labelInput.setAttribute("aria-label","Texto alternativo de "+selectedProduct.name);
-    const position=node("input");position.type="number";position.min="0";position.max="9999";position.step="1";position.value=String(im.sort_order);
-    position.setAttribute("aria-label","Orden de imagen");
-    const save=action("Guardar texto y orden",async()=>{
+    const labelInput=node("input");labelInput.type="text";
+    labelInput.maxLength=180;labelInput.value=im.alt_text||"";
+    labelInput.setAttribute("aria-label","Descripción de imagen para "+product.name);
+    const position=node("input");position.type="number";
+    position.min="0";position.max="9999";position.step="1";
+    position.value=String(im.sort_order);
+    position.setAttribute("aria-label","Posición de imagen");
+    const save=action("Guardar descripción y orden",async()=>{
       const order=Number(position.value);
-      if(!Number.isInteger(order)||order<0||order>9999){notify("Orden inválido.",true);return;}
+      if(!Number.isInteger(order)||order<0||order>9999){
+        setImageNotice("El orden debe ser un entero entre 0 y 9999.","error");return;
+      }
       save.disabled=true;
       try{
-        const {error}=await api.from("product_images").update({alt_text:labelInput.value.trim(),sort_order:order}).eq("id",im.id);
+        const {error}=await api.from("product_images")
+          .update({alt_text:labelInput.value.trim(),sort_order:order})
+          .eq("id",im.id);
         if(error)throw error;
-        await loadProductImages();notify("Imagen actualizada.");
-      }catch(e){notify(safeError(e),true);}finally{save.disabled=false;}
+        await loadProductImages();
+        setImageNotice("Descripción y orden actualizados.","ok");
+      }catch(e){setImageNotice(friendlyImageError(e),"error");notify(friendlyImageError(e),true);}
+      finally{save.disabled=false;}
     });
-    const replacement=node("input");replacement.type="file";replacement.accept="image/jpeg,image/png,image/webp";
-    replacement.className="replace-image-input";replacement.setAttribute("aria-label","Reemplazar imagen");
+    const replacement=node("input");replacement.type="file";
+    replacement.accept="image/jpeg,image/png,image/webp";
+    replacement.className="replace-image-input";
+    replacement.setAttribute("aria-label","Reemplazar imagen existente");
     replacement.addEventListener("change",async()=>{
       const file=replacement.files?.[0];if(!file||imagesBusy)return;
-      imagesBusy=true;
-      let newPath;
+      imagesBusy=true;let newPath;
+      setImageNotice("Reemplazando imagen…");
       try{
-        newPath=await uploadObject(selectedProduct,file);
-        const {error}=await api.from("product_images").update({storage_path:newPath}).eq("id",im.id);
+        newPath=await uploadObject(product,file);
+        const {error}=await api.from("product_images")
+          .update({storage_path:newPath}).eq("id",im.id);
         if(error)throw error;
         const {error:cleanupError}=await api.storage.from(IMAGE_BUCKET).remove([im.storage_path]);
-        if(cleanupError)console.warn("Redcastle: original image cleanup pending.",cleanupError.code||"StorageError");
-        await loadProductImages();notify("Fotografía reemplazada.");
+        if(cleanupError)console.warn("Redcastle: limpieza pendiente de imagen anterior.",cleanupError.code||"StorageError");
+        await loadProductImages();
+        setImageNotice("Imagen reemplazada. Puedes actualizar el catálogo para verla.","ok");
+        notify("Imagen reemplazada.");
       }catch(e){
         if(newPath)await api.storage.from(IMAGE_BUCKET).remove([newPath]);
-        notify(safeError(e),true);
+        setImageNotice(friendlyImageError(e),"error");notify(friendlyImageError(e),true);
       }finally{imagesBusy=false;}
     });
-    const del=action("Eliminar",async()=>{
+    const del=action("Eliminar imagen",async()=>{
       if(imagesBusy)return;
-      imagesBusy=true;
+      imagesBusy=true;del.disabled=true;
+      setImageNotice("Eliminando imagen…");
       try{
         const {error}=await api.from("product_images").delete().eq("id",im.id);
         if(error)throw error;
         const {error:removeError}=await api.storage.from(IMAGE_BUCKET).remove([im.storage_path]);
-        if(removeError)console.warn("Redcastle: orphaned image requires cleanup.",removeError.code||"StorageError");
-        await loadProductImages();notify("Imagen retirada del producto.");
-      }catch(e){notify(safeError(e),true);}finally{imagesBusy=false;}
+        if(removeError)console.warn("Redcastle: limpieza pendiente en Storage.",removeError.code||"StorageError");
+        await loadProductImages();
+        setImageNotice("Imagen eliminada; hay un espacio disponible para otra fotografía.","ok");
+        notify("Imagen eliminada.");
+      }catch(e){setImageNotice(friendlyImageError(e),"error");notify(friendlyImageError(e),true);}
+      finally{imagesBusy=false;del.disabled=false;}
     });
     tools.append(labelInput,position,save,replacement,del);
     item.append(tools);parent.append(item);
   }
+  if(remaining===0)setImageNotice("Límite de 8 imágenes alcanzado. Puedes elegir otra principal, reemplazar o eliminar una de las existentes.","warning");
 }
 async function openImageManager(product){
   selectedProduct=product;
-  $("imageDialogTitle").textContent="Imágenes · "+product.name;
-  $("imageDialog").showModal();
-  try{await loadProductImages();}catch(e){notify(safeError(e),true);}
+  $("imageDialogTitle").textContent="Fotografías · "+product.name;
+  $("imageCount").textContent="Consultando imágenes…";
+  $("imagesList").replaceChildren();
+  setImageNotice("Cargando galería del producto…");
+  if(!$("imageDialog").open)$("imageDialog").showModal();
+  try{await loadProductImages();}catch(e){
+    setImageNotice("Error al leer la galería: "+friendlyImageError(e),"error");
+    notify(friendlyImageError(e),true);
+  }
 }
 async function uploadImages(event){
   event.preventDefault();
   if(!selectedProduct||imagesBusy)return;
+  const product=selectedProduct;
   const files=[...$("imageFiles").files];
   if(!files.length)return;
-  imagesBusy=true;
-  const submit=event.currentTarget.querySelector("[type=submit]");submit.disabled=true;
+  const submit=$("submitImages");
+  imagesBusy=true;submit.disabled=true;
+  let inserted=0;
   try{
-    const {data:current,error:readError}=await api.from("product_images")
-      .select("id,is_primary").eq("product_id",selectedProduct.id);
+    const {data,error:readError}=await api.from("product_images")
+      .select("id,is_primary").eq("product_id",product.id);
     if(readError)throw readError;
-    if(files.length>8-(current?.length||0))throw new Error("IMAGE_LIMIT_REACHED");
+    const existing=Array.isArray(data)?data:[];
+    if(files.length>8-existing.length)throw new Error("IMAGE_LIMIT_REACHED");
+    // Validate every file before starting a partial multi-file upload.
+    for(const file of files)validateImage(file);
     const alt=$("imageAlt").value.trim();
     for(const file of files){
-      const path=await uploadObject(selectedProduct,file);
-      const primary=!(current||[]).some(x=>x.is_primary);
+      setImageNotice("Subiendo imagen "+(inserted+1)+" de "+files.length+"…");
+      const path=await uploadObject(product,file);
+      const primary=!existing.some(x=>x.is_primary);
       const {error:insertError}=await api.from("product_images").insert({
-        product_id:selectedProduct.id,storage_path:path,alt_text:alt||selectedProduct.name,
-        sort_order:(current?.length||0),is_primary:primary
+        product_id:product.id,storage_path:path,alt_text:alt||product.name,
+        sort_order:existing.length,is_primary:primary
       });
-      if(insertError){await api.storage.from(IMAGE_BUCKET).remove([path]);throw insertError;}
-      current.push({id:path,is_primary:primary});
+      if(insertError){
+        await api.storage.from(IMAGE_BUCKET).remove([path]);
+        throw insertError;
+      }
+      existing.push({id:path,is_primary:primary});
+      inserted++;
+      // Confirm each successful image visually even if another one fails later.
+      await loadProductImages();
     }
     event.currentTarget.reset();
-    await loadProductImages();notify("Fotografías incorporadas al catálogo.");
-  }catch(e){notify(safeError(e),true);}
-  finally{imagesBusy=false;submit.disabled=false;}
+    setImageNotice(inserted+" imagen"+(inserted===1?"":"es")+" registrada"+(inserted===1?"":"s")+". Ahora puedes elegir la principal.","ok");
+    notify(inserted+" fotografías añadidas.");
+  }catch(e){
+    const msg=friendlyImageError(e);
+    const prefix=inserted?inserted+" imagen(es) guardadas correctamente. ":"";
+    setImageNotice(prefix+"No se completó la carga: "+msg,"error");
+    notify(prefix+msg,true);
+    try{await loadProductImages();}catch{console.warn("Redcastle: no se pudo refrescar la galería.");}
+    // Preserve a useful failure notice after refreshing the gallery.
+    setImageNotice(prefix+"No se completó la carga: "+msg,"error");
+  }finally{imagesBusy=false;submit.disabled=$("imageFiles").disabled;}
 }
 async function loadContactSettings(){
   const {data,error}=await api.from("site_settings").select("whatsapp_number").eq("singleton",true).maybeSingle();
@@ -254,6 +337,16 @@ async function main(){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   $("createProduct").addEventListener("submit",createProduct);
   $("uploadImages").addEventListener("submit",uploadImages);
+  $("reloadImages").addEventListener("click",async()=>{
+    if(!selectedProduct||imagesBusy)return;
+    setImageNotice("Actualizando galería…");
+    try{
+      await loadProductImages();
+      if(!$("imageFiles").disabled)setImageNotice("Galería actualizada.","ok");
+    }catch(error){
+      setImageNotice("No se pudo actualizar la galería: "+friendlyImageError(error),"error");
+    }
+  });
   $("contactSettings").addEventListener("submit",saveContactSettings);
   $("closeImageDialog").addEventListener("click",()=>$("imageDialog").close());
   $("imageDialog").addEventListener("click",e=>{if(e.target===$("imageDialog"))$("imageDialog").close();});
