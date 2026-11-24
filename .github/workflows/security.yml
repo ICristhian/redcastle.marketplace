@@ -28,7 +28,7 @@ jobs:
         run: node --check public/js/store.js
       - name: Check JavaScript module syntax
         run: |
-          for file in public/js/config.js public/js/backend.js public/js/portal.js public/js/admin.js; do
+          for file in public/js/config.js public/js/backend.js public/js/portal.js public/js/retail-portal.js public/js/admin.js; do
             node --input-type=module --check < "$file"
           done
       - name: Check site security policies
