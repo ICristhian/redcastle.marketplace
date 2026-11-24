@@ -31,7 +31,7 @@ const headers=read("public/_headers");
 assert.ok(headers.includes("/portal.html")&&headers.includes("/admin.html"),"portal CSP paths present");
 assert.match(headers,/connect-src 'self' https:\/\/ygagjdrdckfkranzndqv\.supabase\.co/,"CSP only permits the configured Supabase project");
 for (const route of ["/portal","/portal.html","/admin","/admin.html"]) {
-  assert.ok(headers.includes("\\n"+route+"\\n  ! Content-Security-Policy\\n"),"Cloudflare detach required for "+route);
+  assert.ok(headers.includes([route,"  ! Content-Security-Policy"].join(String.fromCharCode(10))),"Cloudflare detach required for "+route);
 }
 assert.equal((headers.match(/! Content-Security-Policy/g)||[]).length,4,"no inherited restrictive CSP on portal routes");
 assert.match(backend,/import\("\.\/vendor\/supabase\.mjs"\)/,"SDK loaded from Cloudflare origin");
