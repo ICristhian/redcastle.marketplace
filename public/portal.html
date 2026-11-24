@@ -1,23 +1,126 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Portal de reservas | Redcastle</title>
-<link rel="stylesheet" href="/css/portal.css">
-<script type="module" src="/js/portal.js"></script></head>
-<body><header class="site-header"><div class="wrap nav"><a class="brand" href="#inicio">R<span>.</span> redcastle <small>PORTAL</small></a>
-<nav aria-label="Navegación"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#carrito">Mi carrito</a><a href="#reservas">Mis reservas</a><a href="/">Tienda demo</a><a href="/admin.html" id="adminLink" hidden>Administración</a></nav>
-<div class="user-actions"><span id="userLabel" class="dim">Invitado</span><button class="button secondary" id="signIn" type="button">Ingresar</button><button class="button secondary" id="signOut" type="button" hidden>Salir</button></div></div></header>
-<main class="wrap"><div class="banner" id="inicio"><div><span class="eyebrow">REDCASTLE · RESERVAS</span><h1>Elige, reserva y <em>conversemos.</em></h1><p>Encuentra tus favoritos, reserva artículos disponibles y continúa la atención por WhatsApp. El pago se coordina fuera del sitio.</p>
-<a href="#catalogo" class="button primary">Explorar productos ↗</a></div><div class="banner-mark" aria-hidden="true">R<span>✦</span></div></div>
-<div class="notice" id="setupNotice" role="status">Preparando conexión al sistema de reservas…</div>
-<section id="authSection" class="card auth-section"><div><span class="eyebrow">TU CUENTA</span><h2>Tu carrito, tus reservas.</h2><p>Inicia sesión con tu cuenta existente. No necesitamos crear otra contraseña.</p></div><div class="auth-buttons"><button id="googleLogin" class="button social" type="button">Continuar con Google</button><button id="microsoftLogin" class="button social" type="button">Continuar con Microsoft</button></div></section>
-<section class="catalog-section" id="catalogo"><div class="section-head"><div><span class="eyebrow">CATÁLOGO ACTUALIZADO</span><h2>Productos disponibles<span class="accent">.</span></h2></div><p id="catalogCount" class="dim" aria-live="polite"></p></div>
-<div class="filters"><input id="search" type="search" placeholder="Busca un producto…" aria-label="Buscar productos">
-<select id="categoryFilter" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option></select>
-<select id="sort" aria-label="Ordenar"><option value="name">Nombre</option><option value="price-low">Menor precio</option><option value="price-high">Mayor precio</option></select></div>
-<div id="catalogGrid" class="product-grid" aria-live="polite"><div class="empty">El catálogo se mostrará cuando se conecte la base de datos.</div></div></section>
-<section class="two-col"><div class="card cart-card" id="carrito"><div class="section-head"><div><span class="eyebrow">TU SELECCIÓN</span><h2>Carrito personal</h2></div><span class="counter" id="cartCount">0</span></div><div id="cartItems" class="stack"><p class="dim">Inicia sesión para consultar tu carrito.</p></div>
-<div class="subtotal"><span>Subtotal referencial</span><strong id="cartTotal">S/ 0.00</strong></div><button id="reserve" class="button primary full" type="button" disabled>Solicitar reserva ↗</button><p class="fine">Al solicitar la reserva se validará el inventario de Supabase, se apartarán las unidades y se abrirá WhatsApp con el código. No se procesan pagos en esta web.</p></div>
-<div class="card" id="reservas"><span class="eyebrow">HISTORIAL</span><h2>Mis reservas</h2><div id="reservationList" class="stack"><p class="dim">Inicia sesión para ver tus reservas.</p></div></div></section>
-<section class="footer-note"><strong>Reservas, no pagos en línea.</strong><span>WhatsApp se abrirá con el código de reserva. El envío del mensaje requiere tu confirmación; no compartas datos bancarios en este portal.</span></section>
-</main><footer class="wrap site-footer">© Redcastle Marketplace · Portal de reservas · El acceso y disponibilidad dependen de la base de datos configurada.</footer>
-<div class="toast" id="toast" role="status" aria-live="polite" hidden></div></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171b24">
+  <meta name="description" content="Redcastle Marketplace: catálogo con carrito personal y reservas de productos por WhatsApp.">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Redcastle Marketplace | Tu tienda, tu estilo</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/retail.css">
+  <link rel="stylesheet" href="/css/retail-portal.css">
+  <script type="module" src="/js/retail-portal.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#productos">Saltar al catálogo</a>
+  <div class="demo-strip"><span>✦ REDCASTLE MARKETPLACE</span><span class="demo-strip-detail">Reserva tus favoritos · Coordina por WhatsApp · Sin pagos en línea</span></div>
+  <header class="site-header">
+    <div class="container header-main">
+      <a class="brand" href="#inicio" aria-label="Redcastle Marketplace, inicio">
+        <span class="brand-icon" aria-hidden="true">R<span class="brand-spark">✦</span></span>
+        <span class="brand-word">redcastle<span class="brand-dot">.</span><small>MARKETPLACE</small></span>
+      </a>
+      <label class="header-search" for="siteSearch">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg>
+        <input type="search" id="siteSearch" placeholder="¿Qué estás buscando?" autocomplete="off" aria-label="Buscar productos">
+        <kbd class="search-hint">Buscar</kbd>
+      </label>
+      <div class="header-actions">
+        <span id="userLabel" class="user-label">Invitado</span><button class="account-trigger" id="signIn" type="button">Ingresar</button><button class="account-trigger" id="signOut" type="button" hidden>Salir</button>
+        <button class="cart-trigger" id="openCart" type="button" aria-label="Abrir carrito de reservas">
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 5H6l2.4 10.7h10.3l2.1-7.5H7"/><circle cx="9.5" cy="19.4" r="1.25"/><circle cx="17.4" cy="19.4" r="1.25"/></svg>
+          <span class="cart-label">Mi carrito</span><span class="cart-count" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+    <nav class="header-nav container" aria-label="Navegación principal">
+      <a class="nav-strong" href="#productos">Todos los productos</a>
+      <a href="#categorias">Categorías</a>
+      <a href="#como-funciona">Cómo funciona</a><a href="#reservas">Mis reservas</a><a id="adminLink" href="/admin.html" hidden>Administración</a>
+      <span class="nav-right">Todo para tu día a día <span aria-hidden="true">✦</span></span>
+    </nav>
+  </header>
+  <main id="inicio">
+    <section class="hero container" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> BIENVENIDO A REDCASTLE</p>
+        <h1 id="heroTitle">Encuentra eso que <em>te encanta.</em></h1>
+        <p class="hero-description">Tecnología, hogar y accesorios en un solo lugar. Guarda tus favoritos en un carrito personal y reserva con disponibilidad verificada.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#productos">Explorar productos <span aria-hidden="true">↗</span></a>
+          <a class="btn btn-outline" href="#categorias">Ver categorías <span aria-hidden="true">→</span></a>
+        </div>
+        <p class="hero-footnote"><span class="hero-footnote-dot" aria-hidden="true"></span> Reserva de productos · Atención por WhatsApp · Pago fuera de la web</p>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-orbit hero-orbit-one"></div><div class="hero-orbit hero-orbit-two"></div>
+        <div class="hero-sticker">TU NUEVO<br><strong>FAVORITO</strong><span>✳</span></div>
+        <svg class="hero-art" viewBox="0 0 320 260"><use href="/assets/products.svg#headphones"/></svg>
+        <div class="hero-tag"><span class="hero-tag-dot"></span><span>Descubre<br><strong>la colección</strong></span><span class="hero-tag-arrow">↗</span></div>
+        <span class="hero-star hero-star-one">✦</span><span class="hero-star hero-star-two">✳</span>
+      </div>
+    </section>
+    <section class="benefits container" aria-label="Características de la demostración">
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true">✳</span><div><strong>Explora fácil</strong><span>Encuentra tus favoritos</span></div></div>
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true">▣</span><div><strong>Arma tu carrito</strong><span>Agrega, cambia y elimina</span></div></div>
+      <div class="benefit"><span class="benefit-icon" aria-hidden="true">♡</span><div><strong>Todo a tu ritmo</strong><span>Tu carrito se guarda en tu cuenta</span></div></div>
+    </section>
+    <section class="categories-section container" id="categorias" aria-labelledby="categoriesTitle">
+      <div class="section-head">
+        <div><p class="eyebrow accent-eyebrow">ENCUENTRA TU ESTILO</p><h2 id="categoriesTitle">Explora por categoría<span class="title-period">.</span></h2></div>
+        <a href="#productos" class="view-all">Ver todo el catálogo <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="category-grid">
+        <button class="category-card category-tech" type="button" data-category="Tecnología"><span class="category-copy"><span>01 / DESCUBRE</span><strong>Tecnología</strong><small>Audio, gadgets y más ↗</small></span><span class="category-emoji" aria-hidden="true">🎧</span></button>
+        <button class="category-card category-home" type="button" data-category="Hogar"><span class="category-copy"><span>02 / ENCUENTRA</span><strong>Hogar</strong><small>Ideas para tu espacio ↗</small></span><span class="category-emoji" aria-hidden="true">🏡</span></button>
+        <button class="category-card category-accessories" type="button" data-category="Accesorios"><span class="category-copy"><span>03 / ELIGE</span><strong>Accesorios</strong><small>Estilo a donde vayas ↗</small></span><span class="category-emoji" aria-hidden="true">🎒</span></button>
+      </div>
+    </section>
+    <section id="authSection" class="container auth-panel" aria-labelledby="authTitle">
+      <div><span class="eyebrow">TU CUENTA</span><h2 id="authTitle">Tu carrito y tus reservas, siempre contigo.</h2><p>Inicia sesión con Google o Microsoft. No necesitas crear una contraseña adicional.</p></div>
+      <div class="auth-buttons"><button id="googleLogin" type="button" class="btn btn-primary">Continuar con Google</button><button id="microsoftLogin" type="button" class="btn btn-outline">Continuar con Microsoft</button></div>
+    </section>
+    <div class="container"><div class="status-notice" id="setupNotice" role="status" aria-live="polite">Conectando el catálogo…</div></div>
+    <section class="products-section" id="productos" aria-labelledby="productsTitle">
+      <div class="container">
+        <div class="section-head product-head">
+          <div><p class="eyebrow accent-eyebrow">CURADURÍA REDCASTLE</p><h2 id="productsTitle">Nuestros productos<span class="title-period">.</span></h2><p class="section-description">Stock disponible consultado desde Supabase. Confirma tu selección y continúa por WhatsApp.</p></div>
+          <span class="demo-label"><span aria-hidden="true">●</span> DISPONIBILIDAD EN LÍNEA</span>
+        </div>
+        <div class="catalog-toolbar">
+          <div class="filter-chips" role="group" aria-label="Filtrar por categoría">
+            <button class="filter-chip active" type="button" data-category="Todos" aria-pressed="true">Todos</button>
+            <button class="filter-chip" type="button" data-category="Tecnología" aria-pressed="false">Tecnología</button>
+            <button class="filter-chip" type="button" data-category="Hogar" aria-pressed="false">Hogar</button>
+            <button class="filter-chip" type="button" data-category="Accesorios" aria-pressed="false">Accesorios</button>
+          </div>
+          <div class="sort-controls"><span class="result-count" id="resultCount" aria-live="polite">Cargando catálogo…</span><label for="sortSelect">Ordenar:</label><select id="sortSelect" aria-label="Ordenar productos"><option value="default">Destacados</option><option value="price-asc">Menor precio</option><option value="price-desc">Mayor precio</option><option value="name">Nombre A–Z</option></select></div>
+        </div>
+        <div class="product-grid" id="productGrid" aria-live="polite"></div>
+        <div class="no-results" id="noResults" hidden><div class="no-results-icon" aria-hidden="true">⌕</div><h3>No encontramos productos</h3><p>Prueba con otra búsqueda o categoría.</p><button id="resetFilters" class="btn btn-outline" type="button">Limpiar filtros</button></div>
+      </div>
+    </section>
+    <section class="info-banner container" id="como-funciona">
+      <div class="info-banner-icon" aria-hidden="true">✳</div><div><p class="eyebrow">ASÍ FUNCIONA</p><h2>Reserva primero, conversemos después.</h2><p>Agrega productos, solicita tu reserva y valida existencias. Se registrará un código con el que podrás continuar por WhatsApp. No procesamos pagos en esta web.</p></div><a href="#productos" class="btn btn-primary">Explorar disponibles <span aria-hidden="true">↗</span></a>
+    </section>
+    <section class="container reservations-section" id="reservas" aria-labelledby="reservationsTitle">
+      <div class="section-head"><div><p class="eyebrow accent-eyebrow">TU HISTORIAL</p><h2 id="reservationsTitle">Mis reservas<span class="title-period">.</span></h2></div><button id="reloadReservations" type="button" class="btn btn-outline">Actualizar</button></div>
+      <div id="reservationList" class="reservation-grid" aria-live="polite"><p>Inicia sesión para consultar tus reservas.</p></div>
+    </section>
+      </main>
+  <footer class="site-footer"><div class="container footer-inner"><div><a href="#inicio" class="footer-brand">redcastle<span>.</span></a><p>Portal de reservas · Sin cobros en línea</p></div><div class="footer-right"><span>Hecho para explorar, probar y mejorar.</span><span>© <span id="year">2026</span> Redcastle Marketplace</span></div></div></footer>
+  <dialog id="cartDialog" class="cart-dialog" aria-labelledby="cartTitle">
+    <div class="cart-header"><div><p class="cart-kicker">TU SELECCIÓN</p><h2 id="cartTitle">Mi carrito <span id="cartTitleCount">(0)</span></h2></div><button class="icon-button close-cart" id="closeCart" type="button" aria-label="Cerrar carrito">×</button></div>
+    <div class="cart-demo-note"><span aria-hidden="true">ⓘ</span> Tu carrito se guarda en Supabase. Al reservar se valida el stock y se abre WhatsApp con tu código.</div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-footer"><div class="cart-subtotal"><span>Subtotal estimado</span><strong id="cartSubtotal">S/ 0.00</strong></div><p id="reserveHint">La reserva aparta unidades durante 24 horas hasta su confirmación o vencimiento. Pago coordinado fuera del sitio.</p><button class="checkout-button" id="reserve" type="button" disabled>Solicitar reserva <span>Continuar por WhatsApp ↗</span></button><button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button></div>
+  </dialog>
+  <dialog id="productDialog" class="product-dialog" aria-labelledby="detailTitle">
+    <div class="detail-heading"><h2 id="detailTitle">Detalle del producto</h2><button id="closeProduct" class="icon-button" type="button" aria-label="Cerrar detalle">×</button></div>
+    <div class="detail-layout"><div class="detail-images"><div id="detailPrimary" class="detail-main-image"></div><div id="detailThumbs" class="detail-thumbs"></div></div>
+    <div class="detail-copy"><p id="detailCategory" class="eyebrow"></p><p id="detailDescription"></p><strong id="detailPrice" class="detail-price"></strong><p id="detailStock"></p><button id="detailAdd" class="btn btn-primary" type="button">Agregar al carrito</button></div></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+</body>
+</html>
