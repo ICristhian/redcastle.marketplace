@@ -111,7 +111,30 @@ async function createProduct(event){
   }catch(e){notify(safeError(e),true);}
   finally{submit.disabled=false;}
 }
-const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Venta confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Entregada"};
+const STATUS={
+ pending_contact:"Solicitud recibida",confirmed:"Reserva aprobada · stock separado",
+ ready_for_pickup:"Lista para recojo",paid:"Pago efectuado · pendiente de recojo",
+ delivered_unpaid:"Entregado a crédito · pago pendiente",
+ fulfilled:"Finalizada",legacy_sale:"Venta anterior · estado pendiente de revisión",
+ cancelled:"Cancelada",expired:"Solicitud vencida"
+};
+const RESERVATION_ACTIONS={
+ pending_contact:[["confirmed","Aprobar reserva y separar stock"],["cancelled","Rechazar solicitud"]],
+ confirmed:[["ready_for_pickup","Marcar lista para recojo"],["paid","Registrar pago efectuado"],["delivered_unpaid","Entregar a crédito"],["cancelled","Cancelar reserva y liberar stock"]],
+ ready_for_pickup:[["paid","Registrar pago efectuado"],["delivered_unpaid","Entregar a crédito"],["cancelled","Cancelar reserva y liberar stock"]],
+ paid:[["fulfilled","Confirmar recojo en tienda"]],
+ delivered_unpaid:[["fulfilled","Crédito pagado · finalizar"]],
+ legacy_sale:[["paid","Marcar pago registrado (venta anterior)"],["delivered_unpaid","Marcar crédito pendiente (venta anterior)"],["fulfilled","Cerrar venta anterior"]]
+};
+function reservationActionMessage(status,next){
+ if(next==="confirmed")return "El administrador aprobará la solicitud y apartará las unidades disponibles. ¿Continuar?";
+ if(next==="ready_for_pickup")return "El pedido está preparado y listo para ser recogido. El stock continúa apartado. ¿Continuar?";
+ if(next==="paid")return status==="legacy_sale"?"Registrar el pago de una venta anterior sin descontar stock nuevamente. ¿Continuar?":"Registrar pago: se descontará el stock físico y se liberará el apartado. ¿Continuar?";
+ if(next==="delivered_unpaid")return status==="legacy_sale"?"La venta anterior seguirá marcada como crédito pendiente. ¿Continuar?":"El cliente retiró el pedido a crédito; se descontará stock físico y quedará pago pendiente. ¿Continuar?";
+ if(next==="fulfilled")return status==="delivered_unpaid"?"El cliente saldó el crédito. Se cerrará el pedido sin otro descuento de inventario. ¿Continuar?":"Cerrar pedido sin descontar nuevamente el stock. ¿Continuar?";
+ if(next==="cancelled")return status==="pending_contact"?"Rechazar la solicitud sin modificar el inventario. ¿Continuar?":"Cancelar la reserva y liberar las unidades separadas. ¿Continuar?";
+ return "¿Confirmar el cambio de estado?";
+}
 async function loadReservations(){
   const {data,error}=await api.from("reservations")
     .select("id,code,user_id,status,total,created_at,expires_at,reservation_items(product_name,quantity,unit_price)")
@@ -149,35 +172,24 @@ async function loadReservations(){
       detail.append(node("p","Aviso: el total registrado difiere de la suma de partidas.","reservation-total-warning"));
     tr.append(detail);cell(tr,formatMoney(r.total));
     const ops=node("td");
-    const choices=r.status==="pending_contact"?["confirmed","cancelled"]
-      :r.status==="confirmed"?["fulfilled","cancelled"]:[];
+    const choices=RESERVATION_ACTIONS[r.status]||[];
     if(choices.length){
       const select=node("select",undefined,"status-select");
-      select.setAttribute("aria-label","Nuevo estado para "+r.code);
-      select.append(new Option("Cambiar estado",""));
-      const ACTION_LABELS={
-        confirmed:"Confirmar venta · descontar stock",
-        fulfilled:"Marcar entregada · sin nuevo descuento",
-        cancelled:r.status==="confirmed"?"Cancelar venta · devolver stock":"Cancelar reserva · liberar stock"
-      };
-      for(const s of choices)select.append(new Option(ACTION_LABELS[s],s));
+      select.setAttribute("aria-label","Acción para reserva "+r.code);
+      select.append(new Option("Seleccionar siguiente acción",""));
+      for(const [value,label] of choices)select.append(new Option(label,value));
       select.addEventListener("change",async()=>{
-        if(!select.value)return;
-        const value=select.value;
-        const explanation=value==="confirmed"
-          ?"¿Confirmar la venta? Las unidades se descontarán del stock físico y dejarán de aparecer como reservadas."
-          :value==="fulfilled"
-            ?"¿Marcar el pedido como entregado? No se descontará inventario otra vez."
-            :r.status==="confirmed"
-              ?"¿Cancelar esta venta confirmada? Las unidades regresarán al stock físico."
-              :"¿Cancelar esta reserva pendiente? Se liberarán las unidades reservadas.";
-        if(!window.confirm(explanation)){select.value="";return;}
+        const value=select.value;if(!value)return;
+        if(!window.confirm(reservationActionMessage(r.status,value))){select.value="";return;}
         select.disabled=true;
         try{
-          const {error:changeError}=await api.rpc("set_reservation_status",{target_id:r.id,new_status:value});
-          if(changeError)throw changeError;
-          notify("Reserva actualizada.");await Promise.all([loadProducts(),loadReservations()]);
-        }catch(e){notify(safeError(e),true);select.disabled=false;}
+          const {error}=await api.rpc("set_reservation_status",{target_id:r.id,new_status:value});
+          if(error)throw error;
+          notify("Estado actualizado. Inventario sincronizado.");
+          await Promise.all([loadProducts(),loadReservations()]);
+        }catch(error){
+          notify(safeError(error),true);select.disabled=false;select.value="";
+        }
       });
       ops.append(select);
     }else ops.textContent="Cerrada";
