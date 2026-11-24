@@ -191,7 +191,7 @@ async function loadProductImages(){
   const remaining=Math.max(0,8-count);
   $("imageCount").textContent=count+" de 8 imágenes · "+remaining+" espacios disponibles";
   $("imageFiles").disabled=remaining===0;
-  $("submitImages").disabled=remaining===0||imagesBusy;
+  $("submitImages").disabled=remaining===0; // Upload handler separately gates concurrent mutations.
   const parent=$("imagesList");parent.replaceChildren();
   if(!imgs.length)parent.append(node("p","No hay fotografías. Selecciona una o varias imágenes para empezar.","fine"));
   for(const im of imgs){
