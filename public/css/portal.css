@@ -35,3 +35,14 @@
 .image-preview-error{display:flex;align-items:center;justify-content:center;aspect-ratio:1.2;padding:16px;text-align:center;background:#fff3ee;color:#915546;font-size:11px}
 .admin-image-tools a.button{text-align:center;justify-content:center;display:flex}
 .upload-image-form button:disabled,.upload-image-form input:disabled{opacity:.55;cursor:not-allowed}
+
+/* Gallery visual ordering: draggable cards and accessible directional controls. */
+.admin-image-item{transition:transform .15s,box-shadow .15s,border-color .15s}
+.admin-image-item[draggable="true"]{cursor:grab}
+.admin-image-item.dragging{opacity:.42;cursor:grabbing}
+.admin-image-item.drag-target{border:2px dashed #f16b45;background:#fff8f3;box-shadow:0 0 0 3px #f16b4520}
+.image-position-bar{display:flex;align-items:center;gap:5px;min-height:36px;border-bottom:1px solid #e6e9ec;padding:0 0 9px}
+.image-position-label{font-size:11px;font-weight:800;color:#49566a;margin-right:auto}
+.image-position-bar .move-image-button{min-width:31px;min-height:29px;padding:4px 8px;border-radius:6px;font-size:15px;line-height:1}
+.image-position-bar .move-image-button:disabled{opacity:.36;cursor:not-allowed}
+@media(hover:none){.admin-image-item[draggable="true"]{cursor:default}.image-position-label{font-size:10px}}
