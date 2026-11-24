@@ -1,6 +1,6 @@
 import {isConfigured,supabase,formatMoney,safeError,notify,node} from "./backend.js";
 const $=id=>document.getElementById(id);
-let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,imagesBusy=false;
+let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
 function message(text,kind=""){$("accessNotice").textContent=text;$("accessNotice").className="notice "+kind;}
 function action(text,fn){const b=node("button",text,"button secondary");b.type="button";b.addEventListener("click",fn);return b;}
 function cell(tr,text){tr.append(node("td",text??""));}
@@ -135,9 +135,47 @@ function imagePublicUrl(img){
 }
 function friendlyImageError(error){
   if(error?.message==="IMAGE_LIMIT_REACHED")return "Este producto ya tiene ocho imágenes. Elimina o reemplaza una para continuar.";
+  if(error?.message?.includes("INVALID_IMAGE_ORDER"))return "La galería cambió mientras la ordenabas. Actualiza y vuelve a intentarlo.";
   if(error?.message==="IMAGE_INVALID_FORMAT_OR_SIZE")return "Usa archivos JPG, PNG o WEBP, de hasta 3 MB cada uno.";
   return safeError(error);
 }
+
+function requestedOrder(sourceId,targetId){
+  const ids=[...galleryIds];
+  const from=ids.indexOf(sourceId),to=ids.indexOf(targetId);
+  if(from<0||to<0||from===to)return null;
+  ids.splice(from,1);
+  ids.splice(to,0,sourceId);
+  return ids;
+}
+async function persistImageOrder(ids){
+  if(!selectedProduct||imagesBusy||!ids||ids.length!==galleryIds.length)return;
+  const productId=selectedProduct.id;
+  imagesBusy=true;
+  setImageNotice("Guardando el nuevo orden visual…");
+  try{
+    const {error}=await api.rpc("reorder_product_images",{
+      p_product_id:productId,p_image_ids:ids
+    });
+    if(error)throw error;
+    await loadProductImages();
+    setImageNotice("Orden guardado. La galería pública mostrará las fotos en esta secuencia.","ok");
+    notify("Orden de las fotografías actualizado.");
+  }catch(error){
+    setImageNotice("No se pudo guardar el orden: "+friendlyImageError(error),"error");
+    notify(friendlyImageError(error),true);
+    try{await loadProductImages();}catch{console.warn("Redcastle: no se pudo recuperar el orden anterior.");}
+    setImageNotice("No se pudo guardar el orden: "+friendlyImageError(error),"error");
+  }finally{
+    imagesBusy=false;draggingImageId=null;
+  }
+}
+function moveGalleryImage(id,direction){
+  const pos=galleryIds.indexOf(id),target=pos+direction;
+  if(pos<0||target<0||target>=galleryIds.length)return;
+  persistImageOrder(requestedOrder(id,galleryIds[target]));
+}
+
 async function loadProductImages(){
   if(!selectedProduct)return;
   const product=selectedProduct;
@@ -148,6 +186,7 @@ async function loadProductImages(){
   if(error)throw error;
   if(product.id!==selectedProduct?.id)return; // Ignore a stale answer from a different product.
   const imgs=data||[];
+  galleryIds=imgs.map(im=>im.id);
   const count=imgs.length;
   const remaining=Math.max(0,8-count);
   $("imageCount").textContent=count+" de 8 imágenes · "+remaining+" espacios disponibles";
@@ -157,10 +196,48 @@ async function loadProductImages(){
   if(!imgs.length)parent.append(node("p","No hay fotografías. Selecciona una o varias imágenes para empezar.","fine"));
   for(const im of imgs){
     const item=node("div",undefined,"admin-image-item");
+    item.dataset.imageId=im.id;
+    item.draggable=true;
+    item.setAttribute("aria-label","Fotografía "+(galleryIds.indexOf(im.id)+1)+" de "+galleryIds.length+". Arrastra para cambiar su posición.");
+    item.addEventListener("dragstart",e=>{
+      if(imagesBusy){e.preventDefault();return;}
+      draggingImageId=im.id;
+      e.dataTransfer.effectAllowed="move";
+      e.dataTransfer.setData("text/plain",im.id);
+      item.classList.add("dragging");
+    });
+    item.addEventListener("dragover",e=>{
+      if(imagesBusy||!draggingImageId||draggingImageId===im.id)return;
+      e.preventDefault();e.dataTransfer.dropEffect="move";
+      item.classList.add("drag-target");
+    });
+    item.addEventListener("dragleave",()=>item.classList.remove("drag-target"));
+    item.addEventListener("drop",e=>{
+      e.preventDefault();e.stopPropagation();
+      item.classList.remove("drag-target");
+      if(imagesBusy||!draggingImageId)return;
+      const ids=requestedOrder(draggingImageId,im.id);
+      if(ids)persistImageOrder(ids);
+    });
+    item.addEventListener("dragend",()=>{
+      draggingImageId=null;
+      parent.querySelectorAll(".dragging,.drag-target").forEach(el=>el.classList.remove("dragging","drag-target"));
+    });
+    const index=galleryIds.indexOf(im.id);
+    const positionTools=node("div",undefined,"image-position-bar");
+    positionTools.append(node("span","Posición "+(index+1)+" de "+imgs.length+" · Arrastra","image-position-label"));
+    const left=action("←",()=>moveGalleryImage(im.id,-1));
+    left.classList.add("move-image-button");left.disabled=index===0;
+    left.title="Mover imagen a la posición anterior";left.setAttribute("aria-label","Mover imagen anterior");
+    const right=action("→",()=>moveGalleryImage(im.id,1));
+    right.classList.add("move-image-button");right.disabled=index===imgs.length-1;
+    right.title="Mover imagen a la posición siguiente";right.setAttribute("aria-label","Mover imagen siguiente");
+    positionTools.append(left,right);item.append(positionTools);
     const url=imagePublicUrl(im);
     const preview=node("img");
     preview.src=url;preview.alt=im.alt_text||product.name;
     preview.loading="eager";preview.decoding="async";
+    preview.draggable=false;
     preview.addEventListener("error",()=>{
       preview.replaceWith(node("p","No se puede mostrar la miniatura en este navegador.","image-preview-error"));
       setImageNotice("Las imágenes están registradas, pero Opera no pudo cargar una miniatura. Usa «Abrir original» para comprobar el acceso.","warning");
@@ -193,23 +270,15 @@ async function loadProductImages(){
     const labelInput=node("input");labelInput.type="text";
     labelInput.maxLength=180;labelInput.value=im.alt_text||"";
     labelInput.setAttribute("aria-label","Descripción de imagen para "+product.name);
-    const position=node("input");position.type="number";
-    position.min="0";position.max="9999";position.step="1";
-    position.value=String(im.sort_order);
-    position.setAttribute("aria-label","Posición de imagen");
-    const save=action("Guardar descripción y orden",async()=>{
-      const order=Number(position.value);
-      if(!Number.isInteger(order)||order<0||order>9999){
-        setImageNotice("El orden debe ser un entero entre 0 y 9999.","error");return;
-      }
+    const save=action("Guardar descripción",async()=>{
       save.disabled=true;
       try{
         const {error}=await api.from("product_images")
-          .update({alt_text:labelInput.value.trim(),sort_order:order})
+          .update({alt_text:labelInput.value.trim()})
           .eq("id",im.id);
         if(error)throw error;
         await loadProductImages();
-        setImageNotice("Descripción y orden actualizados.","ok");
+        setImageNotice("Descripción de la imagen actualizada.","ok");
       }catch(e){setImageNotice(friendlyImageError(e),"error");notify(friendlyImageError(e),true);}
       finally{save.disabled=false;}
     });
@@ -251,7 +320,7 @@ async function loadProductImages(){
       }catch(e){setImageNotice(friendlyImageError(e),"error");notify(friendlyImageError(e),true);}
       finally{imagesBusy=false;del.disabled=false;}
     });
-    tools.append(labelInput,position,save,replacement,del);
+    tools.append(labelInput,save,replacement,del);
     item.append(tools);parent.append(item);
   }
   if(remaining===0)setImageNotice("Límite de 8 imágenes alcanzado. Puedes elegir otra principal, reemplazar o eliminar una de las existentes.","warning");
