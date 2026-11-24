@@ -27,6 +27,12 @@ assert.ok(read("public/js/retail-portal.js").includes('from("product_images")'),
 assert.ok(read("public/js/admin.js").includes('uploadObject(product,file)'),"admin image upload interface exists");
 assert.ok(read("public/js/admin.js").includes('async function loadProductImages()'),"gallery fetch is present");
 assert.ok(read("public/js/admin.js").includes('rpc("set_primary_product_image"'),"primary image selection requires database RPC");
+assert.ok(read("public/js/retail-portal.js").includes('queryParams:{prompt:"select_account"}'),"Google sign-in always presents account chooser");
+assert.ok(read("public/admin.html").includes('id="editProductForm"'),"admin product editor exists");
+assert.ok(read("public/js/admin.js").includes('async function updateProduct(event)'),"product update handles admin form");
+assert.ok(read("public/js/admin.js").includes('.select("id,sku,name,category,price").single()'),"product changes are verified");
+assert.ok(!read("public/js/admin.js").includes('.update({id:'),"internal database UUID is never updated by frontend");
+assert.ok(read("supabase/migrations/20261124024859_limit_product_update_columns.sql").includes("grant update (sku,name,description,category,price,active,updated_at)"),"restricted product edit columns");
 assert.ok(read("public/js/admin.js").includes('rpc("reorder_product_images"'),"visual ordering uses atomic database function");
 assert.ok(read("public/js/admin.js").includes('item.draggable=true'),"desktop drag and drop available");
 assert.ok(read("public/js/admin.js").includes('moveGalleryImage(im.id,-1)'),"accessibility button allows reordering");
