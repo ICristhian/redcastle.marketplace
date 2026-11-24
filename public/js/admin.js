@@ -6,10 +6,10 @@ function action(text,fn){const b=node("button",text,"button secondary");b.type="
 function cell(tr,text){tr.append(node("td",text??""));}
 function setTab(name){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
-  for(const n of ["products","reservations","users","settings"])$(n+"Panel").hidden=n!==name;
+  for(const n of ["products","reservations","users","settings","history"])$(n+"Panel").hidden=n!==name;
 }
 async function loadProducts(){
-  const {data,error}=await api.from("products").select("id,sku,name,description,category,price,active,inventory(on_hand,reserved)").order("name");
+  const {data,error}=await api.from("products").select("id,sku,name,description,category,price,active,updated_at,inventory(on_hand,reserved,updated_at)").order("name");
   if(error)throw error;products=data||[];
   const tbody=$("productsTable");tbody.replaceChildren();
   for(const p of products){
@@ -17,30 +17,17 @@ async function loadProducts(){
     const tr=node("tr");
     const name=node("td");name.append(node("strong",p.name),node("small",p.sku));tr.append(name);
     cell(tr,formatMoney(p.price));
-    const stock=node("td");const stockInput=node("input",undefined,"edit-input");
-    stockInput.type="number";stockInput.min=String(Number(i.reserved)||0);stockInput.step="1";stockInput.max="1000000";stockInput.value=String(Number(i.on_hand)||0);
-    stockInput.setAttribute("aria-label","Stock físico de "+p.name);stock.append(stockInput);tr.append(stock);
-    cell(tr,i.reserved??0);cell(tr,Math.max(0,(Number(i.on_hand)||0)-(Number(i.reserved)||0)));
-    const active=node("td");const checkbox=node("input");checkbox.type="checkbox";checkbox.checked=Boolean(p.active);
-    checkbox.setAttribute("aria-label","Producto activo "+p.name);active.append(checkbox);tr.append(active);
+    const stock=node("td");
+    stock.append(node("strong",String(Number(i.on_hand)||0)));
+    tr.append(stock);
+    cell(tr,i.reserved??0);
+    cell(tr,Math.max(0,(Number(i.on_hand)||0)-(Number(i.reserved)||0)));
+    cell(tr,p.active?"Publicado":"Oculto");
     const imageCell=node("td");
-    const imagesButton=action("Imágenes",()=>openImageManager(p));
-    imageCell.append(imagesButton);tr.append(imageCell);
+    imageCell.append(action("Imágenes",()=>openImageManager(p)));tr.append(imageCell);
     const controls=node("td");
-    const save=action("Guardar",async()=>{
-      const on_hand=Number(stockInput.value);
-      if(!Number.isSafeInteger(on_hand)||on_hand<Number(i.reserved)||on_hand>1000000){notify("Stock inválido; no puede ser menor a lo reservado.",true);return;}
-      save.disabled=true;
-      try{
-        const {error:stockError}=await api.from("inventory").update({on_hand,updated_at:new Date().toISOString()}).eq("product_id",p.id);
-        if(stockError)throw stockError;
-        const {error:productError}=await api.from("products").update({active:checkbox.checked,updated_at:new Date().toISOString()}).eq("id",p.id);
-        if(productError)throw productError;
-        notify("Producto actualizado.");await loadProducts();
-      }catch(e){notify(safeError(e),true);}
-      finally{save.disabled=false;}
-    });
-    controls.append(save,action("Editar ficha",()=>openProductEditor(p)));tr.append(controls);tbody.append(tr);
+    const edit=action("Editar",()=>openProductEditor(p));
+    controls.append(edit);tr.append(controls);tbody.append(tr);
   }
   if(!products.length){const tr=node("tr");const td=node("td","Todavía no hay productos registrados.");td.colSpan=8;tr.append(td);tbody.append(tr);}
 }
@@ -52,6 +39,11 @@ function openProductEditor(product){
   $("editProductName").value=product.name;
   $("editProductCategory").value=product.category;
   $("editProductPrice").value=String(product.price);
+  const inventory=Array.isArray(product.inventory)?product.inventory[0]:(product.inventory||{});
+  $("editProductStock").value=String(Number(inventory.on_hand)||0);
+  $("editProductStock").min=String(Number(inventory.reserved)||0);
+  $("editProductActive").checked=Boolean(product.active);
+  $("editReservedHint").textContent="Unidades reservadas: "+(Number(inventory.reserved)||0)+". El stock físico no puede ser inferior a este valor.";
   $("editProductDescription").value=product.description||"";
   if(!$("editProductDialog").open)$("editProductDialog").showModal();
 }
@@ -72,23 +64,33 @@ async function updateProduct(event){
      price<0||price>100000000){
     notify("Revisa SKU, nombre, categoría, precio y descripción.",true);return;
   }
+  const onHandText=String(data.get("on_hand")||"").trim();
+  const onHand=Number(onHandText);
+  const active=$("editProductActive").checked;
+  const inventory=Array.isArray(editingProduct.inventory)?editingProduct.inventory[0]:(editingProduct.inventory||{});
+  if(!/^\\d+$/.test(onHandText)||!Number.isSafeInteger(onHand)||onHand<Number(inventory.reserved||0)||onHand>1000000){
+    notify("El stock físico debe ser un entero igual o superior a lo reservado.",true);return;
+  }
   const submit=form.querySelector('[type="submit"]');
   submit.disabled=true;
-  const id=editingProduct.id;
+  const snapshot=editingProduct;
   try{
-    const {data:updated,error}=await api.from("products")
-      .update({sku,name,category,description,price,updated_at:new Date().toISOString()})
-      .eq("id",id)
-      .select("id,sku,name,category,price").single();
+    const {error}=await api.rpc("admin_update_product",{
+      p_product_id:snapshot.id,p_sku:sku,p_name:name,p_category:category,
+      p_description:description,p_price:price,p_on_hand:onHand,p_active:active,
+      p_expected_product_updated_at:snapshot.updated_at,
+      p_expected_inventory_updated_at:inventory.updated_at
+    });
     if(error)throw error;
-    if(updated.id!==id)throw new Error("PRODUCT_UPDATE_FAILED");
     $("editProductDialog").close();
     editingProduct=null;
     await loadProducts();
-    notify("Ficha del producto actualizada. El catálogo mostrará los cambios al recargar.");
+    notify("Producto, inventario e historial actualizados correctamente.");
   }catch(e){
-    if(e.code==="23505")notify("El SKU ya pertenece a otro producto.",true);
-    else notify(safeError(e),true);
+    if(e.code==="23505")notify("Ese SKU ya pertenece a otro producto.",true);
+    else if(e.message?.includes("PRODUCT_EDIT_CONFLICT")){
+      notify("El producto fue modificado desde otra sesión. Cierra el editor, actualiza la tabla y vuelve a editar.",true);
+    } else notify(safeError(e),true);
   }finally{submit.disabled=false;}
 }
 async function createProduct(event){
@@ -123,7 +125,28 @@ async function loadReservations(){
     cell(tr,usersById.get(r.user_id)?.email||"Usuario "+r.user_id.slice(0,8));
     cell(tr,new Date(r.created_at).toLocaleString("es-PE"));cell(tr,STATUS[r.status]||r.status);
     const detail=node("td");
-    for(const x of r.reservation_items||[])detail.append(node("div",x.quantity+" × "+x.product_name));
+    const breakdown=node("table",undefined,"reservation-breakdown");
+    const head=node("thead"),headRow=node("tr");
+    for(const col of ["Producto","Cantidad","Precio histórico","Subtotal"])headRow.append(node("th",col));
+    head.append(headRow);breakdown.append(head);
+    const body=node("tbody");
+    let computedCents=0;
+    for(const x of r.reservation_items||[]){
+      const trItem=node("tr");
+      const unitCents=Math.round(Number(x.unit_price)*100);
+      const subtotalCents=unitCents*Number(x.quantity);
+      computedCents+=subtotalCents;
+      trItem.append(
+        node("td",x.product_name),
+        node("td",String(x.quantity)),
+        node("td",formatMoney(x.unit_price)),
+        node("td",formatMoney(subtotalCents/100))
+      );
+      body.append(trItem);
+    }
+    breakdown.append(body);detail.append(breakdown);
+    if(computedCents!==Math.round(Number(r.total)*100))
+      detail.append(node("p","Aviso: el total registrado difiere de la suma de partidas.","reservation-total-warning"));
     tr.append(detail);cell(tr,formatMoney(r.total));
     const ops=node("td");
     const choices=r.status==="pending_contact"?["confirmed","cancelled"]
@@ -147,6 +170,43 @@ async function loadReservations(){
     tr.append(ops);tbody.append(tr);
   }
   if(!reservations.length){const tr=node("tr");const td=node("td","Sin reservas registradas.");td.colSpan=7;tr.append(td);tbody.append(tr);}
+}
+const HISTORY_AVAILABILITY={
+  available:"Disponible",out_of_stock:"Sin stock",unlisted:"Retirado del catálogo"
+};
+const HISTORY_CHANGE={
+  baseline:"Estado inicial",product_change:"Cambio de ficha o precio",
+  availability_change:"Cambio de disponibilidad"
+};
+async function loadHistory(){
+  const selector=$("historyProductSelect");
+  const selected=selector.value;
+  selector.replaceChildren(new Option("Selecciona un producto",""));
+  for(const p of products)selector.append(new Option(p.sku+" · "+p.name,p.id));
+  if(products.some(p=>p.id===selected))selector.value=selected;
+  const body=$("historyTable");body.replaceChildren();
+  const id=selector.value;
+  if(!id){$("historySummary").textContent="Selecciona un producto para ver sus versiones históricas.";return;}
+  const {data,error}=await api.from("product_history")
+    .select("version_no,sku,name,price,active,availability,valid_from,valid_to,change_kind")
+    .eq("product_id",id).order("version_no",{ascending:false}).limit(250);
+  if(error)throw error;
+  $("historySummary").textContent=(data||[]).length+" versiones registradas. Los períodos anteriores al inicio del historial no pueden reconstruirse.";
+  for(const v of data||[]){
+    const row=node("tr");
+    const formatDate=x=>x?new Date(x).toLocaleString("es-PE"):"Actual";
+    row.append(
+      node("td","v"+v.version_no),
+      node("td",formatDate(v.valid_from)),
+      node("td",formatDate(v.valid_to)),
+      node("td",v.sku+" · "+v.name),
+      node("td",formatMoney(v.price)),
+      node("td",v.active?"Publicado":"Oculto"),
+      node("td",HISTORY_AVAILABILITY[v.availability]||v.availability),
+      node("td",HISTORY_CHANGE[v.change_kind]||v.change_kind)
+    );
+    body.append(row);
+  }
 }
 async function loadUsers(){
   const {data,error}=await api.from("profiles").select("id,email,display_name,role,created_at").order("created_at",{ascending:false}).limit(200);
@@ -452,6 +512,8 @@ async function saveContactSettings(event){
 async function main(){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   $("createProduct").addEventListener("submit",createProduct);
+  $("historyProductSelect").addEventListener("change",()=>loadHistory().catch(e=>notify(safeError(e),true)));
+  $("reloadHistory").addEventListener("click",()=>loadHistory().catch(e=>notify(safeError(e),true)));
   $("editProductForm").addEventListener("submit",updateProduct);
   $("closeEditProduct").addEventListener("click",()=>$("editProductDialog").close());
   $("editProductDialog").addEventListener("close",()=>{editingProduct=null;});
@@ -482,6 +544,7 @@ async function main(){
     message("Administrador autenticado. Las operaciones están restringidas por las reglas de PostgreSQL.","ok");
     $("adminContent").hidden=false;
     await Promise.all([loadProducts(),loadUsers(),loadContactSettings()]);
+    await loadHistory();
     await loadReservations();
   }catch(e){message("Error al validar el acceso administrativo. Revisa la sesión y la configuración.","error");notify(safeError(e),true);}
 }
