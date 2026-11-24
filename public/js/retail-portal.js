@@ -20,6 +20,7 @@ const safeRemove=(k,local=false)=>{try{(local?localStorage:sessionStorage).remov
 
 function placeholder(p){
   const wrapper=node("div",undefined,"fallback-art");
+  if(!LEGACY_ART[p.sku]){wrapper.append(node("span","◇","fallback-glyph"));return wrapper;}
   const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("viewBox","0 0 320 260");svg.setAttribute("aria-hidden","true");
   const use=document.createElementNS("http://www.w3.org/2000/svg","use");
@@ -102,6 +103,7 @@ async function loadCatalog(){
   const img=await api.from("product_images").select("id,product_id,storage_path,alt_text,sort_order,is_primary,created_at");
   if(img.error)throw img.error;
   images=img.data||[];
+  updateCategoryChips();
   renderProducts();
   renderCart();
 }
@@ -113,6 +115,24 @@ async function loadContact(){
 }
 function makeButton(text,className,callback){
   const el=node("button",text,className);el.type="button";el.addEventListener("click",callback);return el;
+}
+function updateCategoryChips(){
+  const chips=document.querySelector(".filter-chips");
+  chips.querySelectorAll('[data-generated="true"]').forEach(b=>b.remove());
+  const existing=new Set([...chips.querySelectorAll(".filter-chip")].map(b=>b.dataset.category));
+  const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,"es"));
+  for(const cat of categories){
+    if(existing.has(cat))continue;
+    const chip=makeButton(cat,"filter-chip",()=>setCategory(cat));
+    chip.dataset.category=cat;chip.dataset.generated="true";
+    chip.setAttribute("aria-pressed","false");chips.append(chip);
+  }
+  if(category!=="Todos" && !categories.includes(category))category="Todos";
+  document.querySelectorAll(".filter-chip").forEach(b=>{
+    const isSelected=b.dataset.category===category;
+    b.classList.toggle("active",isSelected);
+    b.setAttribute("aria-pressed",String(isSelected));
+  });
 }
 function renderProducts(){
   if(!initialised)return;
