@@ -40,7 +40,8 @@ test("HTML sin manejadores onclick / onerror",!/\son(?:click|error|load|mouseove
 test("JavaScript sin eval/innerHTML",!/(?:\beval\s*\(|\binnerHTML\b|\bouterHTML\b|document\.write\s*\(|new\s+Function\s*\()/i.test(js));
 test("Carrito usa texto en el DOM",js.includes(".textContent"));
 test("Carrito restringe cantidades",js.includes("MAX_QTY = 10") && js.includes("Number.isInteger(q)"));
-test("Botón checkout deshabilitado",/<button class="checkout-button" disabled type="button">/.test(html));
+test("Sin checkout ni pagos en línea",!html.includes("Finalizar compra") && html.includes('id="transferToPortal"') && html.includes("Solicitar reserva"));
+test("Reserva inicia deshabilitada sin carrito",/<button class="checkout-button" id="transferToPortal" type="button" disabled>/.test(html));
 test("Sin fuentes externas en HTML",!/<(?:script|link)\b[^>]*https?:\/\//i.test(html));
 test("Ilustraciones SVG no incluyen scripts",!/<script\b|onload\s*=|javascript:/i.test(svg));
 console.log("\n" + checks + " verificaciones de seguridad local superadas.");
