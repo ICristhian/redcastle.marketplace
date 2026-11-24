@@ -111,7 +111,7 @@ async function createProduct(event){
   }catch(e){notify(safeError(e),true);}
   finally{submit.disabled=false;}
 }
-const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Atendida"};
+const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Venta confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Entregada"};
 async function loadReservations(){
   const {data,error}=await api.from("reservations")
     .select("id,code,user_id,status,total,created_at,expires_at,reservation_items(product_name,quantity,unit_price)")
@@ -155,10 +155,24 @@ async function loadReservations(){
       const select=node("select",undefined,"status-select");
       select.setAttribute("aria-label","Nuevo estado para "+r.code);
       select.append(new Option("Cambiar estado",""));
-      for(const s of choices)select.append(new Option(STATUS[s],s));
+      const ACTION_LABELS={
+        confirmed:"Confirmar venta · descontar stock",
+        fulfilled:"Marcar entregada · sin nuevo descuento",
+        cancelled:r.status==="confirmed"?"Cancelar venta · devolver stock":"Cancelar reserva · liberar stock"
+      };
+      for(const s of choices)select.append(new Option(ACTION_LABELS[s],s));
       select.addEventListener("change",async()=>{
         if(!select.value)return;
-        const value=select.value;select.disabled=true;
+        const value=select.value;
+        const explanation=value==="confirmed"
+          ?"¿Confirmar la venta? Las unidades se descontarán del stock físico y dejarán de aparecer como reservadas."
+          :value==="fulfilled"
+            ?"¿Marcar el pedido como entregado? No se descontará inventario otra vez."
+            :r.status==="confirmed"
+              ?"¿Cancelar esta venta confirmada? Las unidades regresarán al stock físico."
+              :"¿Cancelar esta reserva pendiente? Se liberarán las unidades reservadas.";
+        if(!window.confirm(explanation)){select.value="";return;}
+        select.disabled=true;
         try{
           const {error:changeError}=await api.rpc("set_reservation_status",{target_id:r.id,new_status:value});
           if(changeError)throw changeError;
