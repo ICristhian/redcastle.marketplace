@@ -80,11 +80,18 @@ function showAuth(section=currentSection()){
 async function auth(provider){
   if(!api)return;
   if(!safeGet(RETURN_KEY))rememberSection();
-  const {error}=await api.auth.signInWithOAuth({provider,options:{
-    redirectTo:location.origin+"/portal.html",
-    ...(provider==="azure"?{scopes:"email"}:{})
-  }});
-  if(error){notify(safeError(error),true);safeRemove(RETURN_KEY);}
+  try{
+    const {error}=await api.auth.signInWithOAuth({provider,options:{
+      redirectTo:location.origin+"/portal.html",
+      // Signing out of Supabase does not sign out of Google.
+      // Explicitly show Google's account chooser for every new login.
+      ...(provider==="google"?{queryParams:{prompt:"select_account"}}:{}),
+      ...(provider==="azure"?{scopes:"email"}:{})
+    }});
+    if(error)throw error;
+  }catch(error){
+    notify(safeError(error),true);safeRemove(RETURN_KEY);
+  }
 }
 async function refreshSession(){
   const {data:{user:current},error}=await api.auth.getUser();
