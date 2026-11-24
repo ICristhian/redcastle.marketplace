@@ -68,7 +68,7 @@ async function updateProduct(event){
   const onHand=Number(onHandText);
   const active=$("editProductActive").checked;
   const inventory=Array.isArray(editingProduct.inventory)?editingProduct.inventory[0]:(editingProduct.inventory||{});
-  if(!/^\\d+$/.test(onHandText)||!Number.isSafeInteger(onHand)||onHand<Number(inventory.reserved||0)||onHand>1000000){
+  if(!/^\d+$/.test(onHandText)||!Number.isSafeInteger(onHand)||onHand<Number(inventory.reserved||0)||onHand>1000000){
     notify("El stock físico debe ser un entero igual o superior a lo reservado.",true);return;
   }
   const submit=form.querySelector('[type="submit"]');
