@@ -33,6 +33,11 @@ export function safeError(error) {
   const known={
     SDK_IMPORT_FAILED:"No se pudo cargar el módulo de Supabase. Revisa tu conexión, bloqueadores y la consola del navegador.",
     PORTAL_NOT_CONFIGURED:"El portal todavía no tiene conexión configurada.",
+    IMAGE_INVALID_FORMAT_OR_SIZE:"Solo se admiten JPG, PNG o WEBP de hasta 3 MB por imagen.",
+    IMAGE_LIMIT_REACHED:"Cada producto admite un máximo de ocho imágenes.",
+    IMAGE_NOT_FOUND:"No se encontró la imagen del producto.",
+    ACTIVE_RESERVATION_LIMIT:"Has alcanzado el límite de tres reservas activas.",
+    RESERVATION_RESPONSE_INVALID:"La reserva no pudo verificarse. Consulta Mis reservas antes de intentarlo de nuevo.",
     AUTH_REQUIRED:"Inicia sesión para continuar.",
     EMPTY_CART:"Tu carrito está vacío.",
     PRODUCT_UNAVAILABLE:"Un producto ya no está disponible.",
