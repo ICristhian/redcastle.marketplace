@@ -38,6 +38,14 @@ assert.ok(read("public/js/admin.js").includes('Math.round(Number(x.unit_price)*1
 assert.ok(!read("public/js/admin.js").includes('action("Guardar",async()=>'),"there is no redundant inline product save");
 assert.ok(read("supabase/migrations/20261124032652_scd2_product_price_and_availability_history.sql").includes("product_history_one_current"),"SCD2 has exactly one current product version");
 assert.ok(read("supabase/migrations/20261124032735_atomic_admin_product_editor.sql").includes("PRODUCT_EDIT_CONFLICT"),"atomic product edit rejects stale updates");
+const saleSql=read("supabase/migrations/20261124050535_consume_stock_when_sale_confirmed.sql");
+assert.ok(saleSql.includes("on_hand=on_hand-item.quantity"),"sale confirmation consumes physical stock");
+assert.ok(saleSql.includes("reserved=reserved-item.quantity"),"sale confirmation releases reserved stock");
+assert.ok(saleSql.includes("on_hand=on_hand+item.quantity"),"cancelled sale restores physical stock");
+assert.ok(saleSql.includes("where user_id=caller and status='pending_contact'"),"completed sales do not consume pending reservation slots");
+assert.ok(read("public/js/admin.js").includes("Confirmar venta · descontar stock"),"admin sale confirmation is labeled with inventory effect");
+assert.ok(read("public/js/admin.js").includes("¿Cancelar esta venta confirmada?"),"admin cancellation warns about restocking");
+assert.ok(read("public/js/retail-portal.js").includes('confirmed:"Venta confirmada"'),"customer history labels confirmed sale");
 assert.ok(!read("public/js/admin.js").includes('.update({id:'),"internal database UUID is never updated by frontend");
 assert.ok(read("supabase/migrations/20261124024859_limit_product_update_columns.sql").includes("grant update (sku,name,description,category,price,active,updated_at)"),"restricted product edit columns");
 assert.ok(read("public/js/admin.js").includes('rpc("reorder_product_images"'),"visual ordering uses atomic database function");
