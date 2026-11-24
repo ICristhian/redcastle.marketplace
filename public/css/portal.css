@@ -56,3 +56,21 @@
 .product-edit-form input[readonly]{background:#f1f3f5;color:#66717d;cursor:not-allowed;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px}
 .product-edit-form>button{justify-self:start}
 @media(max-width:640px){.product-edit-form{grid-template-columns:1fr}}
+
+/* Single edit action per product, with a detailed immutable reservation snapshot. */
+.product-active-toggle{display:flex!important;align-items:center;flex-direction:row;gap:10px}
+.product-edit-form .product-active-toggle input{width:18px;height:18px;flex:none;accent-color:#f16b45}
+.product-edit-form .product-active-toggle{align-self:center}
+.product-edit-form #editReservedHint{margin:0}
+.reservation-breakdown{width:100%;border-collapse:collapse;min-width:355px;font-size:11px}
+.reservation-breakdown th{font-size:10px;font-weight:750;text-align:left;color:#657080;background:#f5f6f8;padding:7px;border-bottom:1px solid #e8ebee}
+.reservation-breakdown td{border-bottom:1px solid #eff1f2;padding:7px;vertical-align:top;white-space:normal}
+.reservation-breakdown th:nth-child(n+2),.reservation-breakdown td:nth-child(n+2){white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.reservation-total-warning{font-size:11px;color:#ad4e42}
+.history-filters{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+.history-filters label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#3c485b}
+.history-filters select{max-width:100%;min-width:min(360px,80vw);border:1px solid #d8dce1;border-radius:7px;padding:10px;background:#fff;font:inherit}
+.history-table{min-width:860px}
+.history-table th,.history-table td{font-size:11px}
+.history-table td:nth-child(5){font-weight:800;font-variant-numeric:tabular-nums}
+#historySummary{margin-bottom:12px}
