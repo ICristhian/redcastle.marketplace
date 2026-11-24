@@ -26,7 +26,7 @@
         <kbd class="search-hint">Buscar</kbd>
       </label>
       <div class="header-actions">
-        <span class="header-help"><span class="help-circle" aria-hidden="true">✓</span> Compra de prueba</span>
+        <a class="header-help" href="/portal.html#inicio"><span class="help-circle" aria-hidden="true">✓</span> Portal de reservas</a>
         <button class="cart-trigger" id="openCart" type="button" aria-label="Abrir carrito de compras, 0 artículos">
           <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M3.5 5H6l2.4 10.7h10.3l2.1-7.5H7"/><circle cx="9.5" cy="19.4" r="1.25"/><circle cx="17.4" cy="19.4" r="1.25"/></svg>
           <span class="cart-label">Mi carrito</span><span class="cart-count" id="cartCount">0</span>
@@ -36,7 +36,7 @@
     <nav class="header-nav container" aria-label="Navegación principal">
       <a class="nav-strong" href="#productos">Todos los productos</a>
       <a href="#categorias">Categorías</a>
-      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#como-funciona">Cómo funciona</a><a href="/portal.html#inicio">Mi cuenta y reservas</a>
       <span class="nav-right">Todo para tu día a día <span aria-hidden="true">✦</span></span>
     </nav>
   </header>
@@ -102,9 +102,9 @@
   <footer class="site-footer"><div class="container footer-inner"><div><a href="#inicio" class="footer-brand">redcastle<span>.</span></a><p>Marketplace de demostración · Versión inicial</p></div><div class="footer-right"><span>Hecho para explorar, probar y mejorar.</span><span>© <span id="year">2026</span> Redcastle Marketplace</span></div></div></footer>
   <dialog id="cartDialog" class="cart-dialog" aria-labelledby="cartTitle">
     <div class="cart-header"><div><p class="cart-kicker">TU SELECCIÓN</p><h2 id="cartTitle">Mi carrito <span id="cartTitleCount">(0)</span></h2></div><button class="icon-button close-cart" id="closeCart" type="button" aria-label="Cerrar carrito">×</button></div>
-    <div class="cart-demo-note"><span aria-hidden="true">ⓘ</span> Carrito de prueba. No se realizarán cargos ni pedidos.</div>
+    <div class="cart-demo-note"><span aria-hidden="true">ⓘ</span> Selección de prueba. Continuarás al portal para validar stock e iniciar sesión; no se realizan pagos.</div>
     <div class="cart-items" id="cartItems"></div>
-    <div class="cart-footer"><div class="cart-subtotal"><span>Subtotal estimado</span><strong id="cartSubtotal">S/ 0.00</strong></div><p>Precios simulados. No incluyen envío ni representan una oferta comercial.</p><button class="checkout-button" disabled type="button">Finalizar compra <span>Próximamente</span></button><button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button></div>
+    <div class="cart-footer"><div class="cart-subtotal"><span>Subtotal estimado</span><strong id="cartSubtotal">S/ 0.00</strong></div><p>La selección se trasladará al portal de reservas, donde se validarán precios y existencias en Supabase. Sin pagos por la web.</p><button class="checkout-button" id="transferToPortal" type="button" disabled>Solicitar reserva <span>Continuar al portal ↗</span></button><button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button></div>
   </dialog>
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 </body>
