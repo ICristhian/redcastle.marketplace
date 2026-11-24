@@ -11,7 +11,7 @@ const FALLBACK_COLORS=["#e9eff3","#f0eae6","#f0eee7","#e7edf3","#e8eee9","#ebe9f
 const RETURN_KEY="redcastle-return-section-v1";
 const HANDOFF_KEY="redcastle-legacy-handoff-v1";
 const VALID_SECTIONS=new Set(["inicio","productos","categorias","reservas","carrito"]);
-const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Atendida"};
+const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Venta confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Entregada"};
 let api, user=null,profile=null,products=[],cart=[],reservations=[],images=[],contact="",category="Todos",search="",sort="default",selectedProduct=null;
 let busy=false,initialised=false;
 const safeGet=(k,local=false)=>{try{return(local?localStorage:sessionStorage).getItem(k);}catch{return null;}};
