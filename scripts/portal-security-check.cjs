@@ -30,6 +30,10 @@ for(const path of files.slice(1,6)){
 const headers=read("public/_headers");
 assert.ok(headers.includes("/portal.html")&&headers.includes("/admin.html"),"portal CSP paths present");
 assert.match(headers,/connect-src 'self' https:\/\/ygagjdrdckfkranzndqv\.supabase\.co/,"CSP only permits the configured Supabase project");
+for (const route of ["/portal","/portal.html","/admin","/admin.html"]) {
+  assert.ok(headers.includes("\\n"+route+"\\n  ! Content-Security-Policy\\n"),"Cloudflare detach required for "+route);
+}
+assert.equal((headers.match(/! Content-Security-Policy/g)||[]).length,4,"no inherited restrictive CSP on portal routes");
 assert.match(backend,/import\("\.\/vendor\/supabase\.mjs"\)/,"SDK loaded from Cloudflare origin");
 assert.doesNotMatch(backend,/cdn\.jsdelivr\.net|esm\.sh|unpkg\.com/,"no external runtime SDK CDN");
 assert.ok(read("public/admin.html").includes('id="adminContent" hidden'),"admin UI hidden by default");
