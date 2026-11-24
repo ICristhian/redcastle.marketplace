@@ -61,3 +61,20 @@ Reviewed: 2026-11-24. This applies only to `feature/reservation-portal`; product
 - Three existing reservation totals were compared to their stored `reservation_items`; all itemized sums matched.
 - Initial SCD2 baseline begins at migration installation. Prices and states before that date **cannot be reconstructed** from the current catalog.
 - Remaining: manually confirm edit/visibility/history and itemized reservation table in Opera, then stress-test concurrent reservations and cross-user RLS before publishing.
+
+## 2026-11-24 — Sale confirmation consumes inventory
+
+Previous behavior: status `confirmed` held units in `inventory.reserved` and only `fulfilled` deducted `inventory.on_hand`. This was confusing when the administrator treated confirmation as a completed sale.
+
+Corrected behavior:
+- `pending_contact`: stock remains physically on hand, held in `reserved`.
+- `confirmed`: sell immediately; decrement `on_hand` and `reserved` once.
+- `fulfilled`: delivery/collection marker only; no additional inventory change.
+- `cancelled` from pending: release reserved units.
+- `cancelled` from confirmed: return sold units to physical inventory, with explicit admin warning. This assumes a cancelled confirmed sale represents a reversal/return, **not** merely a delivery failure.
+- `expired`: pending reservation only, releases the hold.
+- Active reservation limit counts only pending holds (confirmed sales no longer occupy the limit).
+
+Legacy reconciliation: confirmed sale `101115B1D7D2` for SKU `DEMO-POWERBANK-40000` was reconciled from on_hand=10, reserved=1 to on_hand=9, reserved=0, without changing its historical sale lines.
+
+Database tests were executed within rolled-back transactions: pending→confirmed consumes one physical unit and one reservation; confirmed→fulfilled doesn't double-consume; confirmed→cancelled restores physical stock. Current reserved quantities match pending holds for all nine products.
