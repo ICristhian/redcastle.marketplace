@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const read=p=>fs.readFileSync(p,"utf8");
-const files=["public/portal.html","public/admin.html","public/js/config.js","public/js/backend.js","public/js/portal.js","public/js/admin.js","supabase/migrations/20261123190100_portal.sql"];
+const files=["public/portal.html","public/admin.html","public/js/config.js","public/js/backend.js","public/js/retail-portal.js","public/js/admin.js","supabase/migrations/20261123190100_portal.sql"];
 for(const p of files)assert.ok(fs.existsSync(p),p);
 const sql=read(files[6]),cfg=read("public/js/config.js"),backend=read("public/js/backend.js");
 for(const table of ["profiles","products","inventory","cart_items","reservations","reservation_items"]){
@@ -20,8 +20,13 @@ assert.ok(sql.includes("revoke all on public.profiles"),"table grants");
 assert.match(cfg,/supabaseUrl:\s*"https:\/\/ygagjdrdckfkranzndqv\.supabase\.co"/,"expected development project URL");
 assert.match(cfg,/supabasePublishableKey:\s*"sb_publishable_[A-Za-z0-9_-]+"/,"browser uses publishable-only key");
 assert.doesNotMatch(cfg,/supabasePublishableKey:\s*"(?:sb_secret_|eyJ)[^"]*"/i,"no privileged keys assigned to browser configuration");
-assert.match(cfg,/whatsappNumber:\s*""/,"reservations remain disabled until WhatsApp number is configured");
-assert.match(read("public/js/portal.js"),/!\/\^\\d\{8,15\}\$\/.test\(APP_CONFIG.whatsappNumber\)/,"reservation operation is gated on WhatsApp configuration");
+assert.match(cfg,/whatsappNumber:\s*""/,"frontend does not hardcode the personal WhatsApp number");
+assert.match(read("public/js/retail-portal.js"),/if\(!contact\|\|!cart.length\|\|busy\)return/,"reserve action requires valid contact and cart");
+assert.ok(read("public/js/retail-portal.js").includes('from("site_settings")'),"contact is configured from Supabase");
+assert.ok(read("public/js/retail-portal.js").includes('from("product_images")'),"product images come from Supabase");
+assert.ok(read("public/js/admin.js").includes('uploadObject(selectedProduct,file)'),"admin image upload interface exists");
+assert.ok(read("public/index.html")===read("public/portal.html"),"root and portal present the same storefront");
+assert.ok(read("public/index.html").includes('id="cartDialog"'),"side cart remains on storefront");
 assert.match(backend,/flowType:"pkce"/,"PKCE enabled");
 for(const path of files.slice(1,6)){
   const content=read(path);
