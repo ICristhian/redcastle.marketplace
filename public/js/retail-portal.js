@@ -10,8 +10,17 @@ const LEGACY_ART={
 const FALLBACK_COLORS=["#e9eff3","#f0eae6","#f0eee7","#e7edf3","#e8eee9","#ebe9f1","#f0e9e4","#f0ece4"];
 const RETURN_KEY="redcastle-return-section-v1";
 const HANDOFF_KEY="redcastle-legacy-handoff-v1";
-const VALID_SECTIONS=new Set(["inicio","productos","categorias","reservas","carrito"]);
-const STATUS={pending_contact:"Pendiente de contacto",confirmed:"Venta confirmada",cancelled:"Cancelada",expired:"Expirada",fulfilled:"Entregada"};
+const VALID_SECTIONS=new Set(["inicio","productos","categorias","reservas","nosotros","carrito"]);
+const STATUS={
+  pending_contact:"Solicitud recibida · pendiente de aprobación",
+  confirmed:"Reserva aprobada · producto apartado",
+  ready_for_pickup:"Lista para recojo",
+  paid:"Pago efectuado · pendiente de recojo",
+  delivered_unpaid:"Entregado a crédito · pago pendiente",
+  fulfilled:"Finalizada",
+  legacy_sale:"Venta anterior · revisar pago",
+  cancelled:"Cancelada",expired:"Solicitud vencida"
+};
 let api, user=null,profile=null,products=[],cart=[],reservations=[],images=[],contact="",category="Todos",search="",sort="default",selectedProduct=null;
 let busy=false,initialised=false;
 const safeGet=(k,local=false)=>{try{return(local?localStorage:sessionStorage).getItem(k);}catch{return null;}};
@@ -216,7 +225,7 @@ function renderCart(){
   $("reserve").disabled=busy||!user||!cart.length||!contact;
   $("clearCart").disabled=busy||!user||!cart.length;
   const note=$("reserveHint");
-  if(note)note.textContent=!contact?"Las reservas no están disponibles temporalmente: falta configurar WhatsApp.":"El inventario se verifica al reservar. Una reserva pendiente vence a las 24 horas si no se confirma. Pago fuera de esta web.";
+  if(note)note.textContent=!contact?"Las solicitudes no están disponibles temporalmente: falta configurar WhatsApp.":"Enviar una solicitud no aparta stock. Solo el administrador separa productos al aprobarla. El pago y recojo se coordinan en tienda.";
 }
 async function loadCart(){
   cart=[];
@@ -299,10 +308,10 @@ async function loadReservations(){
 }
 function whatsappLink(r){
   if(!contact)return "";
-  const lines=["Hola, deseo continuar con mi reserva Redcastle "+r.code+"."];
+  const lines=["Hola, quiero solicitar la reserva Redcastle "+r.code+"."];
   for(const x of r.reservation_items||[])lines.push("• "+x.quantity+" × "+x.product_name);
   lines.push("Total referencial: "+formatMoney(r.total)+".");
-  lines.push("Quisiera coordinar disponibilidad y pago fuera de la web.");
+  lines.push("Quisiera confirmar disponibilidad y coordinar el recojo en tienda. Entiendo que el producto se separa solo al aprobarse la solicitud.");
   return "https://wa.me/"+contact+"?text="+encodeURIComponent(lines.join("\n"));
 }
 function renderReservations(){
@@ -315,7 +324,7 @@ function renderReservations(){
     entry.append(node("strong",r.code),node("p",new Date(r.created_at).toLocaleString("es-PE")+" · "+formatMoney(r.total)));
     const summary=(r.reservation_items||[]).map(x=>x.quantity+" × "+x.product_name).join(", ");
     entry.append(node("p",summary));
-    if(r.status==="pending_contact"||r.status==="confirmed"){
+    if(["pending_contact","confirmed","ready_for_pickup","paid","delivered_unpaid","legacy_sale"].includes(r.status)){
       const url=whatsappLink(r);
       if(url){
         const a=node("a","Continuar por WhatsApp ↗","btn btn-outline");a.href=url;a.rel="noopener noreferrer";a.target="_blank";entry.append(a);
@@ -335,11 +344,11 @@ async function reserve(){
     if(!newR?.reservation_code)throw Error("RESERVATION_RESPONSE_INVALID");
     await Promise.all([loadCart(),loadCatalog(),loadReservations()]);
     const record=reservations.find(r=>r.code===newR.reservation_code);
-    notify("Reserva "+newR.reservation_code+" registrada. Continuando con WhatsApp.");
+    notify("Solicitud "+newR.reservation_code+" creada sin apartar stock. Debes enviar el mensaje en WhatsApp y esperar la aprobación de la tienda.");
     $("cartDialog").close();
     const url=record&&whatsappLink(record);
     if(url)location.assign(url);
-    else{location.hash="reservas";notify("Reserva registrada. Puedes retomar WhatsApp desde Mis reservas.");}
+    else{location.hash="reservas";notify("Solicitud registrada sin apartar stock. Puedes abrir WhatsApp desde Mis reservas.");}
   }catch(error){notify(safeError(error),true);}
   finally{busy=false;renderCart();renderProducts();}
 }
