@@ -3,10 +3,10 @@
 <meta name="robots" content="noindex,nofollow"><title>Portal de reservas | Redcastle</title>
 <link rel="stylesheet" href="/css/portal.css">
 <script type="module" src="/js/portal.js"></script></head>
-<body><header class="site-header"><div class="wrap nav"><a class="brand" href="/">R<span>.</span> redcastle <small>PORTAL</small></a>
-<nav aria-label="Navegación"><a href="#catalogo">Catálogo</a><a href="#reservas">Mis reservas</a><a href="/admin.html" id="adminLink" hidden>Administración</a></nav>
+<body><header class="site-header"><div class="wrap nav"><a class="brand" href="#inicio">R<span>.</span> redcastle <small>PORTAL</small></a>
+<nav aria-label="Navegación"><a href="#inicio">Inicio</a><a href="#catalogo">Catálogo</a><a href="#carrito">Mi carrito</a><a href="#reservas">Mis reservas</a><a href="/">Tienda demo</a><a href="/admin.html" id="adminLink" hidden>Administración</a></nav>
 <div class="user-actions"><span id="userLabel" class="dim">Invitado</span><button class="button secondary" id="signIn" type="button">Ingresar</button><button class="button secondary" id="signOut" type="button" hidden>Salir</button></div></div></header>
-<main class="wrap"><div class="banner"><div><span class="eyebrow">REDCASTLE · RESERVAS</span><h1>Elige, reserva y <em>conversemos.</em></h1><p>Encuentra tus favoritos, reserva artículos disponibles y continúa la atención por WhatsApp. El pago se coordina fuera del sitio.</p>
+<main class="wrap"><div class="banner" id="inicio"><div><span class="eyebrow">REDCASTLE · RESERVAS</span><h1>Elige, reserva y <em>conversemos.</em></h1><p>Encuentra tus favoritos, reserva artículos disponibles y continúa la atención por WhatsApp. El pago se coordina fuera del sitio.</p>
 <a href="#catalogo" class="button primary">Explorar productos ↗</a></div><div class="banner-mark" aria-hidden="true">R<span>✦</span></div></div>
 <div class="notice" id="setupNotice" role="status">Preparando conexión al sistema de reservas…</div>
 <section id="authSection" class="card auth-section"><div><span class="eyebrow">TU CUENTA</span><h2>Tu carrito, tus reservas.</h2><p>Inicia sesión con tu cuenta existente. No necesitamos crear otra contraseña.</p></div><div class="auth-buttons"><button id="googleLogin" class="button social" type="button">Continuar con Google</button><button id="microsoftLogin" class="button social" type="button">Continuar con Microsoft</button></div></section>
@@ -16,7 +16,7 @@
 <select id="sort" aria-label="Ordenar"><option value="name">Nombre</option><option value="price-low">Menor precio</option><option value="price-high">Mayor precio</option></select></div>
 <div id="catalogGrid" class="product-grid" aria-live="polite"><div class="empty">El catálogo se mostrará cuando se conecte la base de datos.</div></div></section>
 <section class="two-col"><div class="card cart-card" id="carrito"><div class="section-head"><div><span class="eyebrow">TU SELECCIÓN</span><h2>Carrito personal</h2></div><span class="counter" id="cartCount">0</span></div><div id="cartItems" class="stack"><p class="dim">Inicia sesión para consultar tu carrito.</p></div>
-<div class="subtotal"><span>Subtotal referencial</span><strong id="cartTotal">S/ 0.00</strong></div><button id="reserve" class="button primary full" type="button" disabled>Solicitar reserva ↗</button><p class="fine">El inventario se valida al reservar. Una reserva pendiente expira a las 24 horas si no se confirma.</p></div>
+<div class="subtotal"><span>Subtotal referencial</span><strong id="cartTotal">S/ 0.00</strong></div><button id="reserve" class="button primary full" type="button" disabled>Solicitar reserva ↗</button><p class="fine">Al solicitar la reserva se validará el inventario de Supabase, se apartarán las unidades y se abrirá WhatsApp con el código. No se procesan pagos en esta web.</p></div>
 <div class="card" id="reservas"><span class="eyebrow">HISTORIAL</span><h2>Mis reservas</h2><div id="reservationList" class="stack"><p class="dim">Inicia sesión para ver tus reservas.</p></div></div></section>
 <section class="footer-note"><strong>Reservas, no pagos en línea.</strong><span>WhatsApp se abrirá con el código de reserva. El envío del mensaje requiere tu confirmación; no compartas datos bancarios en este portal.</span></section>
 </main><footer class="wrap site-footer">© Redcastle Marketplace · Portal de reservas · El acceso y disponibilidad dependen de la base de datos configurada.</footer>
