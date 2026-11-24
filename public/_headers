@@ -6,20 +6,20 @@
   Cross-Origin-Opener-Policy: same-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   X-Robots-Tag: noindex, nofollow
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://ygagjdrdckfkranzndqv.supabase.co; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
 
 /portal
   ! Content-Security-Policy
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://ygagjdrdckfkranzndqv.supabase.co; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
 
 /portal.html
   ! Content-Security-Policy
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://ygagjdrdckfkranzndqv.supabase.co; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
 
 /admin
   ! Content-Security-Policy
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://ygagjdrdckfkranzndqv.supabase.co; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
 
 /admin.html
   ! Content-Security-Policy
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://ygagjdrdckfkranzndqv.supabase.co; font-src 'self'; connect-src 'self' https://ygagjdrdckfkranzndqv.supabase.co wss://ygagjdrdckfkranzndqv.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
