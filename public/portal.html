@@ -37,7 +37,7 @@
     <nav class="header-nav container" aria-label="Navegación principal">
       <a class="nav-strong" href="#productos">Todos los productos</a>
       <a href="#categorias">Categorías</a>
-      <a href="#como-funciona">Cómo funciona</a><a href="#reservas">Mis reservas</a><a id="adminLink" href="/admin.html" hidden>Administración</a>
+      <a href="#como-funciona">Cómo funciona</a><a href="#nosotros">Nosotros</a><a href="#reservas">Mis reservas</a><a id="adminLink" href="/admin.html" hidden>Administración</a>
       <span class="nav-right">Todo para tu día a día <span aria-hidden="true">✦</span></span>
     </nav>
   </header>
@@ -85,7 +85,7 @@
     <section class="products-section" id="productos" aria-labelledby="productsTitle">
       <div class="container">
         <div class="section-head product-head">
-          <div><p class="eyebrow accent-eyebrow">CURADURÍA REDCASTLE</p><h2 id="productsTitle">Nuestros productos<span class="title-period">.</span></h2><p class="section-description">Stock disponible consultado desde Supabase. Confirma tu selección y continúa por WhatsApp.</p></div>
+          <div><p class="eyebrow accent-eyebrow">CURADURÍA REDCASTLE</p><h2 id="productsTitle">Nuestros productos<span class="title-period">.</span></h2><p class="section-description">Disponibilidad referencial consultada desde Supabase. La tienda confirmará tu reserva y el recojo.</p></div>
           <span class="demo-label"><span aria-hidden="true">●</span> DISPONIBILIDAD EN LÍNEA</span>
         </div>
         <div class="catalog-toolbar">
@@ -102,7 +102,30 @@
       </div>
     </section>
     <section class="info-banner container" id="como-funciona">
-      <div class="info-banner-icon" aria-hidden="true">✳</div><div><p class="eyebrow">ASÍ FUNCIONA</p><h2>Reserva primero, conversemos después.</h2><p>Agrega productos, solicita tu reserva y valida existencias. Se registrará un código con el que podrás continuar por WhatsApp. No procesamos pagos en esta web.</p></div><a href="#productos" class="btn btn-primary">Explorar disponibles <span aria-hidden="true">↗</span></a>
+      <div class="info-banner-icon" aria-hidden="true">✳</div><div><p class="eyebrow">ASÍ FUNCIONA</p><h2>Tu solicitud, nuestro compromiso.</h2><p>Envía una solicitud por WhatsApp sin apartar stock automáticamente. Tras revisar la disponibilidad, la tienda confirma la reserva y separa el producto para recojo presencial.</p></div><a href="#productos" class="btn btn-primary">Explorar disponibles <span aria-hidden="true">↗</span></a>
+    </section>
+    <section class="about-section container" id="nosotros" aria-labelledby="aboutTitle">
+      <div class="section-head">
+        <div><p class="eyebrow accent-eyebrow">ATENCIÓN EN MAGDALENA DEL MAR</p><h2 id="aboutTitle">Nosotros y nuestra tienda<span class="title-period">.</span></h2></div>
+      </div>
+      <div class="about-grid">
+        <div class="about-copy">
+          <p>Redcastle Marketplace es el catálogo en línea de un kiosco de barrio. Selecciona tus productos, envíanos tu solicitud y coordinaremos su disponibilidad para el recojo presencial.</p>
+          <p><strong>Sin delivery ni pagos por esta web.</strong> El administrador confirma el apartado; el pago se coordina directamente con la tienda.</p>
+          <div class="pickup-info">
+            <h3>Encuéntranos</h3>
+            <p>Referencia: cruce de jirón Cuzco y jirón Libertad, Magdalena del Mar, Lima, Perú.</p>
+            <h3>Horario de atención</h3>
+            <dl class="hours-list"><div><dt>Lunes a viernes</dt><dd>8:00 a. m. – 8:00 p. m.</dd></div><div><dt>Sábado y domingo</dt><dd>9:00 a. m. – 3:00 p. m.</dd></div></dl>
+            <p class="fine">Horarios referenciales para esta versión de prueba; confirmar antes de visitar.</p>
+            <a class="btn btn-outline" href="https://www.google.com/maps/search/?api=1&query=Jir%C3%B3n%20Cuzco%20con%20Jir%C3%B3n%20Libertad%2C%20Magdalena%20del%20Mar%2C%20Lima%2C%20Per%C3%BA" target="_blank" rel="noopener noreferrer">Cómo llegar con Google Maps ↗</a>
+          </div>
+        </div>
+        <div class="about-map">
+          <iframe title="Google Maps: referencia de jirón Cuzco con jirón Libertad, Magdalena del Mar" src="https://www.google.com/maps?q=Jir%C3%B3n%20Cuzco%20con%20Jir%C3%B3n%20Libertad%2C%20Magdalena%20del%20Mar%2C%20Lima%2C%20Per%C3%BA&output=embed" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          <p class="map-caption">Mapa de referencia del cruce indicado, no una ubicación verificada del kiosco.</p>
+        </div>
+      </div>
     </section>
     <section class="container reservations-section" id="reservas" aria-labelledby="reservationsTitle">
       <div class="section-head"><div><p class="eyebrow accent-eyebrow">TU HISTORIAL</p><h2 id="reservationsTitle">Mis reservas<span class="title-period">.</span></h2></div><button id="reloadReservations" type="button" class="btn btn-outline">Actualizar</button></div>
@@ -112,9 +135,9 @@
   <footer class="site-footer"><div class="container footer-inner"><div><a href="#inicio" class="footer-brand">redcastle<span>.</span></a><p>Portal de reservas · Sin cobros en línea</p></div><div class="footer-right"><span>Hecho para explorar, probar y mejorar.</span><span>© <span id="year">2026</span> Redcastle Marketplace</span></div></div></footer>
   <dialog id="cartDialog" class="cart-dialog" aria-labelledby="cartTitle">
     <div class="cart-header"><div><p class="cart-kicker">TU SELECCIÓN</p><h2 id="cartTitle">Mi carrito <span id="cartTitleCount">(0)</span></h2></div><button class="icon-button close-cart" id="closeCart" type="button" aria-label="Cerrar carrito">×</button></div>
-    <div class="cart-demo-note"><span aria-hidden="true">ⓘ</span> Tu carrito se guarda en Supabase. Al reservar se valida el stock y se abre WhatsApp con tu código.</div>
+    <div class="cart-demo-note"><span aria-hidden="true">ⓘ</span> Tu carrito se guarda en Supabase. Al enviar la solicitud se genera un código y se abre WhatsApp; todavía no se aparta stock.</div>
     <div class="cart-items" id="cartItems"></div>
-    <div class="cart-footer"><div class="cart-subtotal"><span>Subtotal estimado</span><strong id="cartSubtotal">S/ 0.00</strong></div><p id="reserveHint">La reserva aparta unidades durante 24 horas hasta su confirmación o vencimiento. Pago coordinado fuera del sitio.</p><button class="checkout-button" id="reserve" type="button" disabled>Solicitar reserva <span>Continuar por WhatsApp ↗</span></button><button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button></div>
+    <div class="cart-footer"><div class="cart-subtotal"><span>Subtotal estimado</span><strong id="cartSubtotal">S/ 0.00</strong></div><p id="reserveHint">La solicitud no separa existencias. El administrador confirmará disponibilidad antes de apartar productos para recojo.</p><button class="checkout-button" id="reserve" type="button" disabled>Enviar solicitud <span>Continuar por WhatsApp ↗</span></button><button class="clear-cart" id="clearCart" type="button">Vaciar carrito</button></div>
   </dialog>
   <dialog id="productDialog" class="product-dialog" aria-labelledby="detailTitle">
     <div class="detail-heading"><h2 id="detailTitle">Detalle del producto</h2><button id="closeProduct" class="icon-button" type="button" aria-label="Cerrar detalle">×</button></div>
