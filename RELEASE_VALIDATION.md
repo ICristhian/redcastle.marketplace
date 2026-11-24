@@ -78,3 +78,15 @@ Corrected behavior:
 Legacy reconciliation: confirmed sale `101115B1D7D2` for SKU `DEMO-POWERBANK-40000` was reconciled from on_hand=10, reserved=1 to on_hand=9, reserved=0, without changing its historical sale lines.
 
 Database tests were executed within rolled-back transactions: pending→confirmed consumes one physical unit and one reservation; confirmed→fulfilled doesn't double-consume; confirmed→cancelled restores physical stock. Current reserved quantities match pending holds for all nine products.
+
+## 2026-11-24 — Admin-approved reservation holds and in-store payment or credit
+
+- Customer presses **Enviar solicitud** → backend stores a pending request and captures line-item prices, but **does not touch inventory**; cart is cleared only once a request is saved. The WhatsApp link opens a prefilled message, but external WhatsApp sending cannot be programmatically confirmed.
+- Admin **Aprobar reserva y separar stock** (pending_contact→confirmed) is the first inventory reservation operation.
+- Ready-for-pickup keeps units reserved. **Pago efectuado** or **Entregar a crédito** consumes physical stock and releases the hold exactly once. Paid→fulfilled marks pickup; delivered_unpaid→fulfilled marks credit settlement (the stock already left at handover).
+- Cancel pending without stock change; cancel admin-approved unpaid hold releases only reserved units. No automatic restocking or return workflow is offered after payment/physical handover.
+- Legacy confirmed sales: migrated to `legacy_sale` and their stock is left unchanged. Their payment state must not be inferred from the old “confirmed” field.
+- Only unapproved requests expire after 24 hours, without touching inventory. Admin approval is atomic and rejects insufficient remaining stock.
+- Database rollback tests passed: new request creates no hold; ordinary paid and credit pickup paths both consume exactly one unit; marking completed does not deduct twice.
+- About section now provides Google Maps location *reference* (Jirón Cuzco at Jirón Libertad, Magdalena del Mar) and **example** hours Mon–Fri 08:00–20:00, Sat–Sun 09:00–15:00; neither kiosk identity nor exact entrance was independently pinned/verified.
+- Pre-production: verify Google Maps embed and directions, reserve→WhatsApp UX, admin approval under concurrent competing requests, credit settlement, customer isolation and mobile layout in Opera.
