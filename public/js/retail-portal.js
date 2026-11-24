@@ -34,7 +34,14 @@ function productImages(p){
 function imageUrl(i){return api.storage.from("product-images").getPublicUrl(i.storage_path).data.publicUrl;}
 function imageNode(i,alt){
   const img=document.createElement("img");
-  img.src=imageUrl(i);img.alt=i.alt_text||alt;img.loading="lazy";img.decoding="async";
+  img.alt=i.alt_text||alt;img.loading="lazy";img.decoding="async";
+  img.addEventListener("error",()=>{
+    // A broken preview must not look like a successful product image.
+    const fallback=node("span","Imagen no disponible","image-load-error");
+    fallback.setAttribute("role","status");
+    img.replaceWith(fallback);
+  },{once:true});
+  img.src=imageUrl(i);
   return img;
 }
 function productArt(p){
