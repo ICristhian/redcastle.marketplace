@@ -6,36 +6,20 @@ export function isConfigured() {
   return enabled && /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(supabaseUrl)
     && typeof supabasePublishableKey === "string" && supabasePublishableKey.length > 20;
 }
-const sdkSources = Object.freeze([
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/+esm",
-  "https://esm.sh/@supabase/supabase-js@2.57.0?bundle"
-]);
-
-async function importSdk() {
-  // Los dos proveedores usan una versión exacta. Nunca se carga una versión "latest".
-  // Una caída del CDN principal no debe deshabilitar el inicio de sesión.
-  for (const source of sdkSources) {
-    try {
-      const module = await import(source);
-      if (typeof module.createClient === "function") return module;
-    } catch (error) {
-      console.warn("Redcastle: no se pudo cargar un origen de SDK; probando alternativa.", error?.name || "NetworkError");
-    }
-  }
-  throw new Error("SDK_IMPORT_FAILED");
-}
-
 export async function supabase() {
   if (!isConfigured()) throw new Error("PORTAL_NOT_CONFIGURED");
   if (!clientPromise) {
     clientPromise = (async () => {
-      const sdk = await importSdk();
+      // SDK empaquetado en CI y servido por Cloudflare desde el mismo origen.
+      // No se descargan módulos desde un CDN durante la navegación.
+      const sdk = await import("./vendor/supabase.mjs");
       return sdk.createClient(APP_CONFIG.supabaseUrl,APP_CONFIG.supabasePublishableKey,{
         auth: {flowType:"pkce",detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}
       });
     })().catch(error => {
-      clientPromise = undefined; // Permite reintentar tras un fallo temporal de red.
-      throw error;
+      clientPromise = undefined;
+      console.warn("Redcastle: error al cargar el módulo local de autenticación.",error?.name||"ModuleError");
+      throw new Error("SDK_IMPORT_FAILED");
     });
   }
   return clientPromise;
