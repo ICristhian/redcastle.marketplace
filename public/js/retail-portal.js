@@ -71,7 +71,7 @@ function showAuth(section=currentSection()){
 }
 async function auth(provider){
   if(!api)return;
-  rememberSection();
+  if(!safeGet(RETURN_KEY))rememberSection();
   const {error}=await api.auth.signInWithOAuth({provider,options:{
     redirectTo:location.origin+"/portal.html",
     ...(provider==="azure"?{scopes:"email"}:{})
