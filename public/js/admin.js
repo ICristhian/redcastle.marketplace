@@ -234,9 +234,9 @@ async function uploadImages(event){
   finally{imagesBusy=false;submit.disabled=false;}
 }
 async function loadContactSettings(){
-  const {data,error}=await api.from("site_settings").select("whatsapp_number").eq("singleton",true).single();
+  const {data,error}=await api.from("site_settings").select("whatsapp_number").eq("singleton",true).maybeSingle();
   if(error)throw error;
-  $("whatsappNumber").value=data.whatsapp_number;
+  $("whatsappNumber").value=data?.whatsapp_number||"";
 }
 async function saveContactSettings(event){
   event.preventDefault();
@@ -244,7 +244,7 @@ async function saveContactSettings(event){
   if(!/^[0-9]{8,15}$/.test(value)){notify("Ingresa el número internacional con 8 a 15 dígitos.",true);return;}
   const submit=event.currentTarget.querySelector("[type=submit]");submit.disabled=true;
   try{
-    const {error}=await api.from("site_settings").update({whatsapp_number:value,updated_at:new Date().toISOString()}).eq("singleton",true);
+    const {error}=await api.from("site_settings").upsert({singleton:true,whatsapp_number:value,updated_at:new Date().toISOString()},{onConflict:"singleton"});
     if(error)throw error;
     notify("WhatsApp actualizado para las próximas solicitudes.");
   }catch(e){notify(safeError(e),true);}finally{submit.disabled=false;}
