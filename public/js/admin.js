@@ -1,6 +1,6 @@
 import {isConfigured,supabase,formatMoney,safeError,notify,node} from "./backend.js";
 const $=id=>document.getElementById(id);
-let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
+let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,editingProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
 function message(text,kind=""){$("accessNotice").textContent=text;$("accessNotice").className="notice "+kind;}
 function action(text,fn){const b=node("button",text,"button secondary");b.type="button";b.addEventListener("click",fn);return b;}
 function cell(tr,text){tr.append(node("td",text??""));}
@@ -9,7 +9,7 @@ function setTab(name){
   for(const n of ["products","reservations","users","settings"])$(n+"Panel").hidden=n!==name;
 }
 async function loadProducts(){
-  const {data,error}=await api.from("products").select("id,sku,name,category,price,active,inventory(on_hand,reserved)").order("name");
+  const {data,error}=await api.from("products").select("id,sku,name,description,category,price,active,inventory(on_hand,reserved)").order("name");
   if(error)throw error;products=data||[];
   const tbody=$("productsTable");tbody.replaceChildren();
   for(const p of products){
@@ -40,9 +40,56 @@ async function loadProducts(){
       }catch(e){notify(safeError(e),true);}
       finally{save.disabled=false;}
     });
-    controls.append(save);tr.append(controls);tbody.append(tr);
+    controls.append(save,action("Editar ficha",()=>openProductEditor(p)));tr.append(controls);tbody.append(tr);
   }
   if(!products.length){const tr=node("tr");const td=node("td","Todavía no hay productos registrados.");td.colSpan=8;tr.append(td);tbody.append(tr);}
+}
+function openProductEditor(product){
+  editingProduct=product;
+  $("editProductTitle").textContent="Editar producto · "+product.name;
+  $("editProductId").value=product.id;
+  $("editProductSku").value=product.sku;
+  $("editProductName").value=product.name;
+  $("editProductCategory").value=product.category;
+  $("editProductPrice").value=String(product.price);
+  $("editProductDescription").value=product.description||"";
+  if(!$("editProductDialog").open)$("editProductDialog").showModal();
+}
+async function updateProduct(event){
+  event.preventDefault();
+  if(!editingProduct)return;
+  const form=event.currentTarget;
+  const data=new FormData(form);
+  const sku=String(data.get("sku")||"").trim().toUpperCase();
+  const name=String(data.get("name")||"").trim();
+  const category=String(data.get("category")||"").trim();
+  const description=String(data.get("description")||"").trim();
+  const priceText=String(data.get("price")||"").trim();
+  const price=Number(priceText);
+  if(sku.length<2||sku.length>64||name.length<2||name.length>160||
+     category.length<2||category.length>80||description.length>1000||
+     !/^\\d+(?:\\.\\d{1,2})?$/.test(priceText)||!Number.isFinite(price)||
+     price<0||price>100000000){
+    notify("Revisa SKU, nombre, categoría, precio y descripción.",true);return;
+  }
+  const submit=form.querySelector('[type="submit"]');
+  submit.disabled=true;
+  const id=editingProduct.id;
+  try{
+    const {data:updated,error}=await api.from("products")
+      .update({sku,name,category,description,price,updated_at:new Date().toISOString()})
+      .eq("id",id)
+      .select("id,sku,name,category,price").single();
+    if(error)throw error;
+    if(updated.id!==id)throw new Error("PRODUCT_UPDATE_FAILED");
+    $("editProductDialog").close();
+    editingProduct=null;
+    await loadProducts();
+    notify("Ficha del producto actualizada. El catálogo mostrará los cambios al recargar.");
+  }catch(e){
+    if(e.code==="23505")notify("El SKU ya pertenece a otro producto.",true);
+    else notify(safeError(e),true);
+  }finally{submit.disabled=false;}
 }
 async function createProduct(event){
   event.preventDefault();
@@ -405,6 +452,10 @@ async function saveContactSettings(event){
 async function main(){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   $("createProduct").addEventListener("submit",createProduct);
+  $("editProductForm").addEventListener("submit",updateProduct);
+  $("closeEditProduct").addEventListener("click",()=>$("editProductDialog").close());
+  $("editProductDialog").addEventListener("close",()=>{editingProduct=null;});
+  $("editProductDialog").addEventListener("click",e=>{if(e.target===$("editProductDialog"))$("editProductDialog").close();});
   $("uploadImages").addEventListener("submit",uploadImages);
   $("reloadImages").addEventListener("click",async()=>{
     if(!selectedProduct||imagesBusy)return;
