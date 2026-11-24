@@ -4,6 +4,46 @@ import {isConfigured,supabase,formatMoney,safeError,notify,whatsappLink,node} fr
 const $=id=>document.getElementById(id);
 let api,user,profile,products=[],cart=[],reservations=[];
 let category="",search="",sort="name";
+const RETURN_KEY="redcastle-return-section-v1";
+const HANDOFF_KEY="redcastle-legacy-handoff-v1";
+const ALLOWED_SECTIONS=new Set(["inicio","catalogo","carrito","reservas"]);
+function safeSessionGet(key) { try {return sessionStorage.getItem(key);} catch {return null;} }
+function safeSessionSet(key,value) { try {sessionStorage.setItem(key,value);} catch {} }
+function safeSessionRemove(key) { try {sessionStorage.removeItem(key);} catch {} }
+function restoreAfterLogin() {
+  if(!user)return;
+  const target=safeSessionGet(RETURN_KEY);
+  if(!target)return;
+  safeSessionRemove(RETURN_KEY);
+  const section=ALLOWED_SECTIONS.has(target)?target:"inicio";
+  if(location.hash!=="#"+section)location.hash=section;
+}
+async function transferDemoSelection() {
+  if(!user || !products.length)return;
+  const raw=safeSessionGet(HANDOFF_KEY);
+  if(!raw)return;
+  let selection;
+  try {selection=JSON.parse(raw);}
+  catch {safeSessionRemove(HANDOFF_KEY);return;}
+  if(!selection || typeof selection!=="object" || Array.isArray(selection)){
+    safeSessionRemove(HANDOFF_KEY);return;
+  }
+  let imported=0,unavailable=0;
+  for(const [legacyId,requested] of Object.entries(selection).slice(0,30)){
+    if(!/^[a-z0-9-]{2,64}$/.test(legacyId) || !Number.isInteger(requested) || requested<1 || requested>10)continue;
+    const p=products.find(x=>x.sku==="DEMO-"+legacyId.toUpperCase());
+    if(!p || Number(p.available)<1){unavailable++;continue;}
+    const existing=cart.find(x=>x.product_id===p.id)?.quantity||0;
+    const quantity=Math.min(10,Number(p.available),Math.max(existing,requested));
+    if(quantity<=0){unavailable++;continue;}
+    const {error}=await api.from("cart_items").upsert({user_id:user.id,product_id:p.id,quantity},{onConflict:"user_id,product_id"});
+    if(error){console.warn("Redcastle: no se pudo trasladar parte de la selección.",error.code||"CartError");return;}
+    imported++;
+  }
+  safeSessionRemove(HANDOFF_KEY);
+  if(imported){await loadCart();notify(imported+" artículos de la tienda de prueba trasladados al carrito personal.");}
+  if(unavailable)notify("Algunos artículos no tenían disponibilidad en el portal.",true);
+}
 
 function setNotice(text,kind="") {const el=$("setupNotice");el.textContent=text;el.className="notice "+kind;}
 function button(label,handler,cls="button secondary") {const b=node("button",label,cls);b.type="button";b.addEventListener("click",handler);return b;}
@@ -161,13 +201,16 @@ async function reserve(){
 }
 async function oauth(provider){
   if(!api)return;
+  const currentSection=location.hash.slice(1);
+  // Lista cerrada: no aceptamos URLs externas ni redirecciones arbitrarias.
+  safeSessionSet(RETURN_KEY,ALLOWED_SECTIONS.has(currentSection)?currentSection:"inicio");
   try{
     const {error}=await api.auth.signInWithOAuth({provider,options:{
       redirectTo:location.origin+"/portal.html",
       ...(provider==="azure"?{scopes:"email"}:{})
     }});
     if(error)throw error;
-  }catch(error){notify(safeError(error),true);}
+  }catch(error){safeSessionRemove(RETURN_KEY);notify(safeError(error),true);}
 }
 async function main(){
   $("search").addEventListener("input",e=>{search=e.target.value.trim().toLocaleLowerCase("es");renderCatalog();});
@@ -176,7 +219,7 @@ async function main(){
   $("googleLogin").addEventListener("click",()=>oauth("google"));
   $("microsoftLogin").addEventListener("click",()=>oauth("azure"));
   $("signIn").addEventListener("click",()=>$("authSection").scrollIntoView({behavior:"smooth"}));
-  $("signOut").addEventListener("click",async()=>{if(api){await api.auth.signOut();await refreshSession();await loadCart();await loadReservations();renderCatalog();notify("Sesión cerrada.");}});
+  $("signOut").addEventListener("click",async()=>{if(api){await api.auth.signOut();await refreshSession();await loadCart();await loadReservations();renderCatalog();location.hash="inicio";notify("Sesión cerrada.");}});
   $("reserve").addEventListener("click",reserve);
   if(!isConfigured()){
     setNotice("Portal preparado, pero aún no conectado. Configura Supabase y los proveedores de acceso antes de habilitar reservas.","error");
@@ -203,7 +246,7 @@ async function main(){
     $("catalogGrid").replaceChildren(node("div","El catálogo no está disponible temporalmente.","empty"));
     console.warn("Redcastle: fallo al consultar catálogo.",error?.code||error?.name||"CatalogError");
   }
-  try { await loadCart(); await loadReservations(); }
+  try { await loadCart(); await transferDemoSelection(); await loadReservations(); restoreAfterLogin(); }
   catch(error) { console.warn("Redcastle: fallo al cargar datos del cliente.",error?.code||error?.name||"DataError"); }
   if(catalogFailed) {
     setNotice("Supabase inició, pero el catálogo no respondió. Puedes probar el acceso con Google; revisaremos los permisos del catálogo.","error");
@@ -211,7 +254,7 @@ async function main(){
     setNotice(/^\\d{8,15}$/.test(APP_CONFIG.whatsappNumber)?"Sistema conectado. Las reservas se registran y validan contra inventario.":"Supabase conectado. Puedes probar el acceso con Google y el carrito; las reservas están deshabilitadas hasta configurar WhatsApp.","ok");
   }
   api.auth.onAuthStateChange(()=>{setTimeout(async()=>{
-    try { await refreshSession(); await loadCart(); await loadReservations(); renderCatalog(); }
+    try { await refreshSession(); await loadCart(); await transferDemoSelection(); await loadReservations(); renderCatalog(); restoreAfterLogin(); }
     catch(error) { console.warn("Redcastle: no se pudo actualizar la sesión.",error?.code||error?.name||"AuthError"); }
   },0);});
 }
