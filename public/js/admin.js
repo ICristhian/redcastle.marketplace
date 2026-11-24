@@ -68,7 +68,7 @@ async function updateProduct(event){
   const price=Number(priceText);
   if(sku.length<2||sku.length>64||name.length<2||name.length>160||
      category.length<2||category.length>80||description.length>1000||
-     !/^\\d+(?:\\.\\d{1,2})?$/.test(priceText)||!Number.isFinite(price)||
+     !/^\d+(?:\.\d{1,2})?$/.test(priceText)||!Number.isFinite(price)||
      price<0||price>100000000){
     notify("Revisa SKU, nombre, categoría, precio y descripción.",true);return;
   }
