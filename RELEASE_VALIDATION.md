@@ -50,3 +50,14 @@ Reviewed: 2026-11-24. This applies only to `feature/reservation-portal`; product
 - Authenticated clients cannot update `products.id` or `created_at`; product UUID is a relational key that must remain stable. Security migration versioned at `20261124024859`.
 - Database tests: admin product edit in rolled-back transaction succeeded, a non-admin simulated identity updated zero product rows, image ordering/primary/metadata/delete transaction passed and was rolled back.
 - Admin UI and Google account chooser were covered by GitHub Actions static security assertions; browser-level acceptance remains open.
+
+## 2026-11-24 — Admin UX, itemized reservations and SCD2 product snapshots
+
+- Admin → Reservas now renders a per-item table (product name, original quantity, unit price at reservation, subtotal). Historical totals are not recalculated from the live catalog.
+- Admin → Inventario removes competing inline Save/Edit actions. One **Editar** action opens a single product editor for SKU, name, category, description, price, stock and visibility; **Guardar producto** invokes `public.admin_update_product`.
+- The database operation locks and validates the product and inventory, detects stale edits by timestamps, commits atomically and creates at most one SCD2 version per full save.
+- Admin → Historial de precios shows the product timeline with valid_from, valid_to, price, publication status and out-of-stock/unlisted state. Only authenticated administrators can read `public.product_history`.
+- SQL-tested in rolled-back transactions: admin price+inventory update generated one new current version, unlisting created a new version, available→out-of-stock created a new version, and a non-admin could not read the history.
+- Three existing reservation totals were compared to their stored `reservation_items`; all itemized sums matched.
+- Initial SCD2 baseline begins at migration installation. Prices and states before that date **cannot be reconstructed** from the current catalog.
+- Remaining: manually confirm edit/visibility/history and itemized reservation table in Opera, then stress-test concurrent reservations and cross-user RLS before publishing.
