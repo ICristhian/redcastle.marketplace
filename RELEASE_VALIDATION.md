@@ -18,6 +18,7 @@ Reviewed: 2026-11-24. This applies only to `feature/reservation-portal`; product
 - Selecting image primary is independent of visual order.
 - Replace/delete images and image recovery/error messages require further UI testing.
 - Reordered gallery appears in public product detail after refreshing.
+- Image primary change, metadata edit, atomic reorder, and delete normalization passed a database transaction that was rolled back afterward. Real Storage replace and UI interactions still require browser testing.
 
 ## SQL / operational checks
 - Admin reordering exercised with transaction rollback: unique contiguous order maintained.
@@ -31,8 +32,9 @@ Reviewed: 2026-11-24. This applies only to `feature/reservation-portal`; product
 - Concurrent reservations competing for last unit; same-user duplicate reserve requests.
 - Pending reservation expiry after 24h and cron release; cancellation/fulfillment inventory effects.
 - Validate the new visual reorder on Opera/mobile and refreshed public carousel.
+- Verify Google account switch using a second Google account in Opera. The portal now passes `prompt=select_account`, but real browser confirmation is pending. Google OAuth Testing mode may require adding the second address to Google Cloud → Audience → Test users.
 - Verify Microsoft OAuth if Microsoft login will remain enabled; hide it if not configured.
-- Complete product attribute editing (name, price, category, description), not merely stock and active state, if the admin requires this before launch.
+- Product attribute editing (SKU, name, price, category, description) is implemented; real Opera confirmation pending. Database UUID remains immutable; existing reservations retain their snapshot prices and names.
 - Mobile accessibility: buttons, drag alternatives, dialogs, gallery, drawer and focus behavior.
 - Personal data retention and privacy policy, anti-abuse/rate limits, backup/restore, custom domain/branding, production secrets and OAuth callbacks.
 - Verify image/media suitability: uploaded test screenshots and logos should be replaced with actual product photos before a real catalog launch.
@@ -40,3 +42,11 @@ Reviewed: 2026-11-24. This applies only to `feature/reservation-portal`; product
 ## Important
 - There is no online checkout or payment capture. Reservations are tentative stock holds; WhatsApp message sending requires a customer action.
 - The current WhatsApp number is for development; do not persist personal numbers or secrets in source files.
+
+## 2026-11-24 — Account switching and complete product editing
+
+- Google sign-in includes `queryParams: { prompt: "select_account" }` to request Google's account chooser each time. This does not sign out of Google itself; testing with a second account remains necessary.
+- Admin product editor accepts SKU, name, category, price and description; field validation and duplicate SKU handling included.
+- Authenticated clients cannot update `products.id` or `created_at`; product UUID is a relational key that must remain stable. Security migration versioned at `20261124024859`.
+- Database tests: admin product edit in rolled-back transaction succeeded, a non-admin simulated identity updated zero product rows, image ordering/primary/metadata/delete transaction passed and was rolled back.
+- Admin UI and Google account chooser were covered by GitHub Actions static security assertions; browser-level acceptance remains open.
