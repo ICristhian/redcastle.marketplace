@@ -29,7 +29,9 @@ for(const path of files.slice(1,6)){
 }
 const headers=read("public/_headers");
 assert.ok(headers.includes("/portal.html")&&headers.includes("/admin.html"),"portal CSP paths present");
-assert.match(headers,/connect-src 'self' https:\/\/\*\.supabase\.co/);
+assert.match(headers,/connect-src 'self' https:\/\/ygagjdrdckfkranzndqv\.supabase\.co/,"CSP only permits the configured Supabase project");
+assert.match(backend,/import\("\.\/vendor\/supabase\.mjs"\)/,"SDK loaded from Cloudflare origin");
+assert.doesNotMatch(backend,/cdn\.jsdelivr\.net|esm\.sh|unpkg\.com/,"no external runtime SDK CDN");
 assert.ok(read("public/admin.html").includes('id="adminContent" hidden'),"admin UI hidden by default");
 assert.ok(read("public/portal.html").includes("Sin") || read("public/portal.html").includes("pago"),"no checkout");
 console.log("Portal security static checks: OK (not an integration or penetration test).");
