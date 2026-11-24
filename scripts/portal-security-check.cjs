@@ -27,6 +27,13 @@ assert.ok(read("public/js/retail-portal.js").includes('from("product_images")'),
 assert.ok(read("public/js/admin.js").includes('uploadObject(product,file)'),"admin image upload interface exists");
 assert.ok(read("public/js/admin.js").includes('async function loadProductImages()'),"gallery fetch is present");
 assert.ok(read("public/js/admin.js").includes('rpc("set_primary_product_image"'),"primary image selection requires database RPC");
+assert.ok(read("public/js/admin.js").includes('rpc("reorder_product_images"'),"visual ordering uses atomic database function");
+assert.ok(read("public/js/admin.js").includes('item.draggable=true'),"desktop drag and drop available");
+assert.ok(read("public/js/admin.js").includes('moveGalleryImage(im.id,-1)'),"accessibility button allows reordering");
+assert.ok(!read("public/js/admin.js").includes('sort_order:order'),"sort_order cannot be directly edited by admin UI");
+assert.ok(read("supabase/migrations/20261124022134_atomic_visual_product_image_order.sql").includes("unique(product_id,sort_order) deferrable initially deferred"),"product image positions are unique");
+assert.ok(read("supabase/migrations/20261124022202_normalize_image_position_after_mutations.sql").includes("redcastle_normalize_images_after_delete"),"delete normalizes positions");
+
 assert.ok(read("public/admin.html").includes('id="imageCount"')&&read("public/admin.html").includes('id="reloadImages"'),"image manager has capacity and reload controls");
 assert.ok(read("public/index.html")===read("public/portal.html"),"root and portal present the same storefront");
 assert.ok(read("public/index.html").includes('id="cartDialog"'),"side cart remains on storefront");
