@@ -24,7 +24,10 @@ assert.match(cfg,/whatsappNumber:\s*""/,"frontend does not hardcode the personal
 assert.match(read("public/js/retail-portal.js"),/if\(!contact\|\|!cart.length\|\|busy\)return/,"reserve action requires valid contact and cart");
 assert.ok(read("public/js/retail-portal.js").includes('from("site_settings")'),"contact is configured from Supabase");
 assert.ok(read("public/js/retail-portal.js").includes('from("product_images")'),"product images come from Supabase");
-assert.ok(read("public/js/admin.js").includes('uploadObject(selectedProduct,file)'),"admin image upload interface exists");
+assert.ok(read("public/js/admin.js").includes('uploadObject(product,file)'),"admin image upload interface exists");
+assert.ok(read("public/js/admin.js").includes('async function loadProductImages()'),"gallery fetch is present");
+assert.ok(read("public/js/admin.js").includes('rpc("set_primary_product_image"'),"primary image selection requires database RPC");
+assert.ok(read("public/admin.html").includes('id="imageCount"')&&read("public/admin.html").includes('id="reloadImages"'),"image manager has capacity and reload controls");
 assert.ok(read("public/index.html")===read("public/portal.html"),"root and portal present the same storefront");
 assert.ok(read("public/index.html").includes('id="cartDialog"'),"side cart remains on storefront");
 assert.match(backend,/flowType:"pkce"/,"PKCE enabled");
