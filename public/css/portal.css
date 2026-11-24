@@ -46,3 +46,13 @@
 .image-position-bar .move-image-button{min-width:31px;min-height:29px;padding:4px 8px;border-radius:6px;font-size:15px;line-height:1}
 .image-position-bar .move-image-button:disabled{opacity:.36;cursor:not-allowed}
 @media(hover:none){.admin-image-item[draggable="true"]{cursor:default}.image-position-label{font-size:10px}}
+
+/* Full product editor, using the same restrained admin design. */
+.product-edit-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:18px}
+.product-edit-form label{display:grid;gap:7px;font-size:12px;font-weight:700;color:#394459;min-width:0}
+.product-edit-form label:has(textarea),.product-edit-form .fine,.product-edit-form>button{grid-column:1/-1}
+.product-edit-form input,.product-edit-form textarea{box-sizing:border-box;min-width:0;width:100%;border:1px solid #d7dce1;border-radius:8px;padding:11px 12px;background:#fff;font:inherit;font-size:13px;color:#283247}
+.product-edit-form input:focus-visible,.product-edit-form textarea:focus-visible{outline:2px solid #ff7d4e;outline-offset:1px}
+.product-edit-form input[readonly]{background:#f1f3f5;color:#66717d;cursor:not-allowed;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px}
+.product-edit-form>button{justify-self:start}
+@media(max-width:640px){.product-edit-form{grid-template-columns:1fr}}
