@@ -60,6 +60,20 @@ assert.ok(!read("public/js/admin.js").includes('sort_order:order'),"sort_order c
 assert.ok(read("supabase/migrations/20261124022134_atomic_visual_product_image_order.sql").includes("unique(product_id,sort_order) deferrable initially deferred"),"product image positions are unique");
 assert.ok(read("supabase/migrations/20261124022202_normalize_image_position_after_mutations.sql").includes("redcastle_normalize_images_after_delete"),"delete normalizes positions");
 
+const stockSql=read("supabase/migrations/20261125030218_audited_counter_stock_and_uncollected_payment_reversal.sql");
+assert.ok(stockSql.includes("create table public.inventory_movements"),"inventory changes have audit log");
+assert.ok(stockSql.includes("STOCK_BELOW_RESERVED"),"physical stock cannot drop below held units");
+assert.ok(stockSql.includes("p_expected_inventory_updated_at"),"manual edits reject stale inventory");
+assert.ok(stockSql.includes("new_status='refunded'"),"paid but uncollected payment can be reversed");
+assert.ok(stockSql.includes("on_hand=on_hand+item.quantity"),"refund restocks exactly once");
+assert.ok(read("public/js/admin.js").includes('rpc("admin_adjust_stock"'),"administrator can adjust physical inventory with reason");
+assert.ok(read("public/js/admin.js").includes('from("inventory_movements")'),"inventory movements shown in admin");
+assert.ok(read("public/admin.html").includes('id="stockAdjustForm"'),"reasoned manual stock form exists");
+assert.ok(read("public/js/admin.js").includes("Anular pago y reponer stock"),"paid-order reversal is available");
+assert.ok(read("public/portal.html").includes('id="continueShopping"'),"side cart has continue shopping button");
+assert.ok(read("public/js/retail-portal.js").includes('consultOutOfStock(p)'),"out-of-stock products offer WhatsApp inquiries");
+assert.ok(read("public/css/portal.css").includes("#reservationsTable>tr"),"admin reservations adapt to mobile cards");
+assert.ok(read("public/css/retail-portal.css").includes("@media(max-width:410px)"),"responsive retail cards cover small phones");
 assert.ok(read("public/admin.html").includes('id="imageCount"')&&read("public/admin.html").includes('id="reloadImages"'),"image manager has capacity and reload controls");
 assert.ok(read("public/index.html")===read("public/portal.html"),"root and portal present the same storefront");
 assert.ok(read("public/index.html").includes('id="cartDialog"'),"side cart remains on storefront");
