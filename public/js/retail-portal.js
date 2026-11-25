@@ -419,6 +419,10 @@ async function start(){
   $("closeCart").addEventListener("click",()=>$("cartDialog").close());
   $("cartDialog").addEventListener("click",e=>{if(e.target===$("cartDialog"))$("cartDialog").close();});
   $("clearCart").addEventListener("click",clearCart);
+  $("continueShopping").addEventListener("click",()=>{
+    $("cartDialog").close();
+    $("productos").scrollIntoView({behavior:"smooth",block:"start"});
+  });
   $("reserve").addEventListener("click",reserve);
   $("signIn").addEventListener("click",()=>showAuth(currentSection()));
   $("googleLogin").addEventListener("click",()=>auth("google"));
