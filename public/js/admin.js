@@ -1,12 +1,12 @@
 import {isConfigured,supabase,formatMoney,safeError,notify,node} from "./backend.js";
 const $=id=>document.getElementById(id);
-let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,editingProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
+let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,editingProduct=null,stockProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
 function message(text,kind=""){$("accessNotice").textContent=text;$("accessNotice").className="notice "+kind;}
 function action(text,fn){const b=node("button",text,"button secondary");b.type="button";b.addEventListener("click",fn);return b;}
 function cell(tr,text){tr.append(node("td",text??""));}
 function setTab(name){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
-  for(const n of ["products","reservations","users","settings","history"])$(n+"Panel").hidden=n!==name;
+  for(const n of ["products","reservations","users","settings","history","movements"])$(n+"Panel").hidden=n!==name;
 }
 async function loadProducts(){
   const {data,error}=await api.from("products").select("id,sku,name,description,category,price,active,updated_at,inventory(on_hand,reserved,updated_at)").order("name");
@@ -22,12 +22,12 @@ async function loadProducts(){
     tr.append(stock);
     cell(tr,i.reserved??0);
     cell(tr,Math.max(0,(Number(i.on_hand)||0)-(Number(i.reserved)||0)));
-    cell(tr,p.active?"Publicado":"Oculto");
+    cell(tr,!p.active?"Oculto":Number(i.on_hand)-Number(i.reserved)<=0?"Agotado · revisar catálogo":"Publicado");
     const imageCell=node("td");
     imageCell.append(action("Imágenes",()=>openImageManager(p)));tr.append(imageCell);
     const controls=node("td");
     const edit=action("Editar",()=>openProductEditor(p));
-    controls.append(edit);tr.append(controls);tbody.append(tr);
+    controls.append(edit,action("Ajustar stock",()=>openStockEditor(p)));tr.append(controls);tbody.append(tr);
   }
   if(!products.length){const tr=node("tr");const td=node("td","Todavía no hay productos registrados.");td.colSpan=8;tr.append(td);tbody.append(tr);}
 }
@@ -43,7 +43,7 @@ function openProductEditor(product){
   $("editProductStock").value=String(Number(inventory.on_hand)||0);
   $("editProductStock").min=String(Number(inventory.reserved)||0);
   $("editProductActive").checked=Boolean(product.active);
-  $("editReservedHint").textContent="Unidades reservadas: "+(Number(inventory.reserved)||0)+". El stock físico no puede ser inferior a este valor.";
+  $("editReservedHint").textContent="Unidades reservadas: "+(Number(inventory.reserved)||0)+". Para ventas presenciales o reposiciones usa «Ajustar stock», que registra el motivo.";
   $("editProductDescription").value=product.description||"";
   if(!$("editProductDialog").open)$("editProductDialog").showModal();
 }
@@ -93,6 +93,78 @@ async function updateProduct(event){
     } else notify(safeError(e),true);
   }finally{submit.disabled=false;}
 }
+function inventoryOf(product){return Array.isArray(product.inventory)?product.inventory[0]:(product.inventory||{});}
+function openStockEditor(product){
+ stockProduct=product;
+ const inv=inventoryOf(product);
+ $("stockDialogTitle").textContent="Ajustar stock · "+product.name;
+ $("stockCurrent").textContent="Stock físico: "+inv.on_hand+" · Reservado: "+inv.reserved+" · Disponible: "+Math.max(0,inv.on_hand-inv.reserved);
+ $("stockNewQuantity").value=String(inv.on_hand??0);
+ $("stockNewQuantity").min=String(inv.reserved||0);
+ $("stockReason").value="";
+ $("stockNotes").value="";
+ $("stockDialog").showModal();
+}
+async function adjustStock(event){
+ event.preventDefault();
+ if(!stockProduct)return;
+ const form=event.currentTarget;
+ const newStock=Number($("stockNewQuantity").value);
+ const kind=$("stockReason").value;
+ const notes=$("stockNotes").value.trim();
+ const reason=kind+(notes?" · "+notes:"");
+ const inv=inventoryOf(stockProduct);
+ if(!Number.isSafeInteger(newStock)||newStock<Number(inv.reserved)||newStock>1000000){
+  notify("El conteo no puede ser inferior a lo reservado ni superior a un millón.",true);return;
+ }
+ if(!kind||reason.length<5||reason.length>250){notify("Selecciona un motivo válido.",true);return;}
+ if(newStock===Number(inv.on_hand)){notify("No hay cambios en el conteo.",true);return;}
+ const submit=form.querySelector('[type="submit"]');submit.disabled=true;
+ try{
+  const {error}=await api.rpc("admin_adjust_stock",{
+    p_product_id:stockProduct.id,p_new_on_hand:newStock,p_reason:reason,
+    p_expected_inventory_updated_at:inv.updated_at
+  });
+  if(error)throw error;
+  $("stockDialog").close();stockProduct=null;
+  await Promise.all([loadProducts(),loadMovements()]);
+  notify("Stock actualizado y movimiento registrado.");
+ }catch(error){
+  notify(error?.message?.includes("PRODUCT_EDIT_CONFLICT")?"El inventario cambió desde otra sesión. Actualiza e intenta de nuevo.":safeError(error),true);
+ }finally{submit.disabled=false;}
+}
+const MOVEMENT_TYPES={
+ manual_physical_adjustment:"Ajuste presencial",
+ admin_approved_hold:"Apartado confirmado",
+ sale_paid:"Pago efectuado",
+ sale_credit:"Entrega a crédito",
+ released_hold:"Reserva liberada",
+ paid_sale_reversed:"Pago anulado",
+ system_adjustment:"Cambio de inventario"
+};
+async function loadMovements(){
+ const {data,error}=await api.from("inventory_movements")
+  .select("id,product_id,movement_type,reason,old_on_hand,new_on_hand,delta,created_at")
+  .order("created_at",{ascending:false}).limit(100);
+ if(error)throw error;
+ const tbody=$("movementsTable");tbody.replaceChildren();
+ if(!data?.length){
+  const tr=node("tr"),td=node("td","Todavía no hay movimientos registrados.");
+  td.colSpan=7;tr.append(td);tbody.append(tr);return;
+ }
+ const byId=new Map(products.map(p=>[p.id,p]));
+ for(const m of data){
+  const tr=node("tr");
+  [
+   new Date(m.created_at).toLocaleString("es-PE"),
+   byId.get(m.product_id)?.name||m.product_id.slice(0,8),
+   MOVEMENT_TYPES[m.movement_type]||m.movement_type,
+   m.reason||"—",m.old_on_hand,m.new_on_hand,
+   (m.delta>0?"+":"")+m.delta
+  ].forEach(v=>cell(tr,String(v)));
+  tbody.append(tr);
+ }
+}
 async function createProduct(event){
   event.preventDefault();
   const form=event.currentTarget;const data=new FormData(form);
@@ -116,17 +188,18 @@ const STATUS={
  ready_for_pickup:"Lista para recojo",paid:"Pago efectuado · pendiente de recojo",
  delivered_unpaid:"Entregado a crédito · pago pendiente",
  fulfilled:"Finalizada",legacy_sale:"Venta anterior · estado pendiente de revisión",
- cancelled:"Cancelada",expired:"Solicitud vencida"
+ cancelled:"Cancelada",expired:"Solicitud vencida",refunded:"Pago anulado · stock repuesto"
 };
 const RESERVATION_ACTIONS={
  pending_contact:[["confirmed","Aprobar reserva y separar stock"],["cancelled","Rechazar solicitud"]],
  confirmed:[["ready_for_pickup","Marcar lista para recojo"],["paid","Registrar pago efectuado"],["delivered_unpaid","Entregar a crédito"],["cancelled","Cancelar reserva y liberar stock"]],
  ready_for_pickup:[["paid","Registrar pago efectuado"],["delivered_unpaid","Entregar a crédito"],["cancelled","Cancelar reserva y liberar stock"]],
- paid:[["fulfilled","Confirmar recojo en tienda"]],
+ paid:[["fulfilled","Confirmar recojo en tienda"],["refunded","Anular pago y reponer stock (sin recojo)"]],
  delivered_unpaid:[["fulfilled","Crédito pagado · finalizar"]],
  legacy_sale:[["paid","Marcar pago registrado (venta anterior)"],["delivered_unpaid","Marcar crédito pendiente (venta anterior)"],["fulfilled","Cerrar venta anterior"]]
 };
 function reservationActionMessage(status,next){
+ if(next==="refunded")return "¿Confirmas que el pago fue anulado y el producto NO se entregó? Se devolverá una unidad por artículo al inventario físico. Esta acción no ejecuta transferencias bancarias.";
  if(next==="confirmed")return "El administrador aprobará la solicitud y apartará las unidades disponibles. ¿Continuar?";
  if(next==="ready_for_pickup")return "El pedido está preparado y listo para ser recogido. El stock continúa apartado. ¿Continuar?";
  if(next==="paid")return status==="legacy_sale"?"Registrar el pago de una venta anterior sin descontar stock nuevamente. ¿Continuar?":"Registrar pago: se descontará el stock físico y se liberará el apartado. ¿Continuar?";
@@ -541,6 +614,10 @@ async function main(){
   $("historyProductSelect").addEventListener("change",()=>loadHistory().catch(e=>notify(safeError(e),true)));
   $("reloadHistory").addEventListener("click",()=>loadHistory().catch(e=>notify(safeError(e),true)));
   $("editProductForm").addEventListener("submit",updateProduct);
+  $("stockAdjustForm").addEventListener("submit",adjustStock);
+  $("closeStockDialog").addEventListener("click",()=>$("stockDialog").close());
+  $("stockDialog").addEventListener("close",()=>{stockProduct=null;});
+  $("reloadMovements").addEventListener("click",()=>loadMovements().catch(e=>notify(safeError(e),true)));
   $("closeEditProduct").addEventListener("click",()=>$("editProductDialog").close());
   $("editProductDialog").addEventListener("close",()=>{editingProduct=null;});
   $("editProductDialog").addEventListener("click",e=>{if(e.target===$("editProductDialog"))$("editProductDialog").close();});
@@ -572,6 +649,7 @@ async function main(){
     await Promise.all([loadProducts(),loadUsers(),loadContactSettings()]);
     await loadHistory();
     await loadReservations();
+    await loadMovements();
   }catch(e){message("Error al validar el acceso administrativo. Revisa la sesión y la configuración.","error");notify(safeError(e),true);}
 }
 main();
