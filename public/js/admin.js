@@ -1,6 +1,6 @@
 import {isConfigured,supabase,formatMoney,safeError,notify,node} from "./backend.js";
 const $=id=>document.getElementById(id);
-let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,editingProduct=null,stockProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null;
+let api,products=[],inventories=[],reservations=[],users=[],selectedProduct=null,editingProduct=null,stockProduct=null,imagesBusy=false, galleryIds=[],draggingImageId=null,inventorySearch="",inventoryStatus="all";
 function message(text,kind=""){$("accessNotice").textContent=text;$("accessNotice").className="notice "+kind;}
 function action(text,fn){const b=node("button",text,"button secondary");b.type="button";b.addEventListener("click",fn);return b;}
 function cell(tr,text){tr.append(node("td",text??""));}
@@ -11,8 +11,21 @@ function setTab(name){
 async function loadProducts(){
   const {data,error}=await api.from("products").select("id,sku,name,description,category,price,active,updated_at,inventory(on_hand,reserved,updated_at)").order("name");
   if(error)throw error;products=data||[];
+  renderInventory();
+}
+function renderInventory(){
   const tbody=$("productsTable");tbody.replaceChildren();
-  for(const p of products){
+  const matches=products.filter(p=>{
+    const inv=Array.isArray(p.inventory)?p.inventory[0]:(p.inventory||{});
+    const available=Number(inv.on_hand||0)-Number(inv.reserved||0);
+    const statusMatch=inventoryStatus==="all"||
+      (inventoryStatus==="available"&&p.active&&available>0)||
+      (inventoryStatus==="out"&&p.active&&available<=0)||
+      (inventoryStatus==="hidden"&&!p.active);
+    return statusMatch&&[p.sku,p.name,p.category,p.description].join(" ").toLocaleLowerCase("es").includes(inventorySearch);
+  });
+  $("inventoryResults").textContent=matches.length+" de "+products.length+" productos";
+  for(const p of matches){
     const i=Array.isArray(p.inventory)?p.inventory[0]:(p.inventory||{});
     const tr=node("tr");
     const name=node("td");name.append(node("strong",p.name),node("small",p.sku));tr.append(name);
@@ -29,7 +42,7 @@ async function loadProducts(){
     const edit=action("Editar",()=>openProductEditor(p));
     controls.append(edit,action("Ajustar stock",()=>openStockEditor(p)));tr.append(controls);tbody.append(tr);
   }
-  if(!products.length){const tr=node("tr");const td=node("td","Todavía no hay productos registrados.");td.colSpan=8;tr.append(td);tbody.append(tr);}
+  if(!matches.length){const tr=node("tr");const td=node("td",products.length?"No hay resultados para esta búsqueda.":"Todavía no hay productos registrados.");td.colSpan=8;tr.append(td);tbody.append(tr);}
 }
 function openProductEditor(product){
   editingProduct=product;
@@ -213,13 +226,33 @@ async function loadReservations(){
     .select("id,code,user_id,status,total,created_at,expires_at,reservation_items(product_name,quantity,unit_price)")
     .order("created_at",{ascending:false}).limit(100);
   if(error)throw error;
-  reservations=data||[];
+  const priority={pending_contact:0,delivered_unpaid:1,legacy_sale:1,confirmed:2,ready_for_pickup:2,paid:2,fulfilled:3,cancelled:3,expired:3,refunded:3};
+  reservations=(data||[]).sort((a,b)=>(priority[a.status]??3)-(priority[b.status]??3)||new Date(b.created_at)-new Date(a.created_at));
+  const todo=reservations.filter(r=>r.status==="pending_contact").length;
+  const attention=reservations.filter(r=>["delivered_unpaid","legacy_sale"].includes(r.status)).length;
+  const processing=reservations.filter(r=>["confirmed","ready_for_pickup","paid"].includes(r.status)).length;
+  const completed=reservations.length-todo-attention-processing;
+  const overview=$("reservationOverview");overview.replaceChildren();
+  const chips=[
+    ["Pendientes de aprobación",todo,"attention"],
+    ["Requieren seguimiento",attention,"attention"],
+    ["En proceso",processing,"progress"],
+    ["Cerradas",completed,"closed"]
+  ];
+  for(const [label,count,color] of chips){
+    const el=node("div",undefined,"overview-chip state-"+color);
+    el.append(node("strong",String(count)),node("span",label));overview.append(el);
+  }
   const tbody=$("reservationsTable");tbody.replaceChildren();
   const usersById=new Map(users.map(u=>[u.id,u]));
   for(const r of reservations){
-    const tr=node("tr");cell(tr,r.code);
+    const tr=node("tr");
+    const statusTone=["pending_contact","delivered_unpaid","legacy_sale"].includes(r.status)?"attention":
+      ["confirmed","ready_for_pickup","paid"].includes(r.status)?"progress":"closed";
+    tr.classList.add("reservation-row","state-"+statusTone);
+    cell(tr,r.code);
     cell(tr,usersById.get(r.user_id)?.email||"Usuario "+r.user_id.slice(0,8));
-    cell(tr,new Date(r.created_at).toLocaleString("es-PE"));cell(tr,STATUS[r.status]||r.status);
+    cell(tr,new Date(r.created_at).toLocaleString("es-PE"));const statusCell=node("td");statusCell.append(node("span",STATUS[r.status]||r.status,"status-pill state-"+statusTone));tr.append(statusCell);
     const detail=node("td");
     const breakdown=node("table",undefined,"reservation-breakdown");
     const head=node("thead"),headRow=node("tr");
@@ -611,6 +644,18 @@ async function saveContactSettings(event){
 async function main(){
   document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
   $("createProduct").addEventListener("submit",createProduct);
+  $("inventorySearch").addEventListener("input",e=>{
+    inventorySearch=e.target.value.trim().toLocaleLowerCase("es");renderInventory();
+  });
+  $("inventoryStatus").addEventListener("change",e=>{inventoryStatus=e.target.value;renderInventory();});
+  $("clearInventoryFilters").addEventListener("click",()=>{
+    inventorySearch="";inventoryStatus="all";
+    $("inventorySearch").value="";$("inventoryStatus").value="all";
+    renderInventory();
+  });
+  $("reloadProducts").addEventListener("click",async()=>{
+    try{await loadProducts();notify("Inventario actualizado.");}catch(e){notify(safeError(e),true);}
+  });
   $("historyProductSelect").addEventListener("change",()=>loadHistory().catch(e=>notify(safeError(e),true)));
   $("reloadHistory").addEventListener("click",()=>loadHistory().catch(e=>notify(safeError(e),true)));
   $("editProductForm").addEventListener("submit",updateProduct);
