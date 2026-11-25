@@ -102,3 +102,12 @@ Database tests were executed within rolled-back transactions: pending→confirme
 - `fulfilled` and credit-pickup orders are not eligible for automatic return in this simple kiosk workflow; no automatic restock after physical handover.
 - SQL rollback tests passed for manual stock adjustment with audit record and payment reversal with inventory restock, without changing existing real data; non-admin manual adjustment rejected.
 - Still pending before production: buyer checkout simulation on mobile, Google Maps embedding, Android/iOS Admin edit interactions, two users isolating carts/reservations, race conditions on final stock, and confirmation that WhatsApp is correctly configured.
+
+## 2026-11-25 — Private account experience, reservation triage, inventory discovery and floating cart
+
+- Public **Mi perfil** section groups the signed-in user's basic OAuth display name/email/provider and personal reservation history, rather than exposing a separate storefront history section. Anonymous visitors see a login prompt. No customer profile editor or additional personal data collection was added.
+- Reservation history prioritizes active requests above closed ones. A visual status color hierarchy is used in both customer and administrator surfaces: amber = requires attention, blue = in process, muted gray = completed/cancelled/expired/refunded. **Color is not the only signal:** text labels and counts are also present.
+- Administrator **Solicitudes de reserva** dashboard shows counters for approval pending, follow-up required, in process, and closed. Pending items sort first; closed orders remain accessible.
+- Administrator **Inventario** has a live search by name, SKU, description and category plus a stock/publication dropdown. Matching rows update without a round trip; reloading retains filters.
+- Persistent floating cart button remains accessible while scrolling, shares the normal side cart and quantity, hides when modal dialogs are open, and avoids obstructing the mobile drawer.
+- Existing production/main remains unmodified. Browser/mobile integration testing is still required for accessibility, navigation and filtering before merge.
