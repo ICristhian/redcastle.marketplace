@@ -19,7 +19,7 @@ const STATUS={
   delivered_unpaid:"Entregado a crédito · pago pendiente",
   fulfilled:"Finalizada",
   legacy_sale:"Venta anterior · revisar pago",
-  cancelled:"Cancelada",expired:"Solicitud vencida"
+  cancelled:"Cancelada",expired:"Solicitud vencida",refunded:"Pago anulado · stock repuesto"
 };
 let api, user=null,profile=null,products=[],cart=[],reservations=[],images=[],contact="",category="Todos",search="",sort="default",selectedProduct=null;
 let busy=false,initialised=false;
@@ -135,6 +135,7 @@ async function loadContact(){
   if(error)throw error;
   contact=/^[0-9]{8,15}$/.test(data?.whatsapp_number||"")?data.whatsapp_number:"";
   renderCart();
+  renderProducts();
 }
 function makeButton(text,className,callback){
   const el=node("button",text,className);el.type="button";el.addEventListener("click",callback);return el;
@@ -156,6 +157,18 @@ function updateCategoryChips(){
     b.classList.toggle("active",isSelected);
     b.setAttribute("aria-pressed",String(isSelected));
   });
+}
+function productWhatsApp(p){
+ if(!contact)return "";
+ const message="Hola, quisiera consultar por disponibilidad del producto "+p.name+" (SKU "+p.sku+"). Actualmente aparece agotado en Redcastle. ¿Tendrán reposición?";
+ return "https://wa.me/"+contact+"?text="+encodeURIComponent(message);
+}
+function consultOutOfStock(p){
+ const url=productWhatsApp(p);
+ if(!url){notify("La consulta por WhatsApp no está disponible temporalmente.",true);return;}
+ const link=document.createElement("a");
+ link.href=url;link.target="_blank";link.rel="noopener noreferrer";
+ link.click();
 }
 function renderProducts(){
   if(!initialised)return;
@@ -180,9 +193,14 @@ function renderProducts(){
     const stock=node("div",Number(p.available)>0?String(p.available)+" disponibles":"Sin stock",Number(p.available)>0?"product-stock":"product-stock out");
     const actions=node("div",undefined,"product-actions");
     const detail=makeButton("Ver detalles","product-detail-button",()=>showProduct(p));
-    const add=makeButton("Agregar al carrito +","add-button",()=>addToCart(p));
-    add.disabled=Number(p.available)<=0||busy;
-    actions.append(detail,add);
+    if(Number(p.available)<=0){
+      const consult=makeButton("Consultar por WhatsApp","consult-stock-button",()=>consultOutOfStock(p));
+      consult.disabled=!contact;
+      actions.append(detail,consult);
+    }else{
+      const add=makeButton("Agregar al carrito +","add-button",()=>addToCart(p));
+      add.disabled=busy;actions.append(detail,add);
+    }
     content.append(price,stock,actions);card.append(openImage,content);$("productGrid").append(card);
   }
 }
@@ -279,7 +297,8 @@ function showProduct(p){
   $("detailDescription").textContent=p.description||"";
   $("detailPrice").textContent=formatMoney(p.price);
   $("detailStock").textContent=Number(p.available)>0?String(p.available)+" disponibles":"Sin stock";
-  $("detailAdd").disabled=Number(p.available)<=0;
+  $("detailAdd").disabled=Number(p.available)<=0&&!contact;
+  $("detailAdd").textContent=Number(p.available)>0?"Agregar al carrito":"Consultar stock por WhatsApp";
   const pictures=productImages(p);
   const primary=$("detailPrimary"), thumbs=$("detailThumbs");primary.replaceChildren();thumbs.replaceChildren();
   const showAt=index=>{
@@ -421,7 +440,10 @@ async function start(){
   $("closeProduct").addEventListener("click",()=>$("productDialog").close());
   $("detailAdd").addEventListener("click",async()=>{
     if(!selectedProduct)return;
-    $("productDialog").close();await addToCart(selectedProduct);
+    const product=selectedProduct;
+    $("productDialog").close();
+    if(Number(product.available)<=0)consultOutOfStock(product);
+    else await addToCart(product);
   });
   $("productDialog").addEventListener("click",e=>{
     if(e.target===$("productDialog"))$("productDialog").close();
