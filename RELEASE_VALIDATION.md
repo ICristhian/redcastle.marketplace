@@ -90,3 +90,15 @@ Database tests were executed within rolled-back transactions: pending→confirme
 - Database rollback tests passed: new request creates no hold; ordinary paid and credit pickup paths both consume exactly one unit; marking completed does not deduct twice.
 - About section now provides Google Maps location *reference* (Jirón Cuzco at Jirón Libertad, Magdalena del Mar) and **example** hours Mon–Fri 08:00–20:00, Sat–Sun 09:00–15:00; neither kiosk identity nor exact entrance was independently pinned/verified.
 - Pre-production: verify Google Maps embed and directions, reserve→WhatsApp UX, admin approval under concurrent competing requests, credit settlement, customer isolation and mobile layout in Opera.
+
+## 2026-11-25 — Mobile usability, physical stock and paid reversal
+
+- Retail side cart includes **Continuar comprando**. It closes the side drawer and returns focus to the product area without clearing cart items.
+- Public catalog retains products with zero available inventory as **Agotado**, with product-specific WhatsApp **Consultar stock** action. Such products cannot be added to cart; the administrator decides whether to unpublish them using the product edit visibility toggle.
+- Mobile UI includes smaller touch-friendly spacing, responsive product cards, an accessible cart drawer, admin tabs that scroll horizontally, and stacked order/inventory cards for narrow phones. Real device verification remains pending.
+- Admin **Ajustar stock** accepts an explicit new physical count, reason (counter sale, restock, physical count, loss, other correction) and optional notes. It refuses inventory below reserved holds, requires a fresh version timestamp, and records immutable `inventory_movements` audit rows (from this deployment onward).
+- A manual stock adjustment is separate from editing the product's commercial data; the product editor shows physical stock read-only, preventing conflicting save routes.
+- `paid -> refunded`: admin explicitly reverses a *paid, not-yet-collected* order, returns each unit to physical stock once, and logs the movement. Does not process actual electronic/bank refund; administrator handles monetary reversal separately.
+- `fulfilled` and credit-pickup orders are not eligible for automatic return in this simple kiosk workflow; no automatic restock after physical handover.
+- SQL rollback tests passed for manual stock adjustment with audit record and payment reversal with inventory restock, without changing existing real data; non-admin manual adjustment rejected.
+- Still pending before production: buyer checkout simulation on mobile, Google Maps embedding, Android/iOS Admin edit interactions, two users isolating carts/reservations, race conditions on final stock, and confirmation that WhatsApp is correctly configured.
