@@ -190,7 +190,7 @@ function renderProducts(){
     const content=node("div",undefined,"product-content");
     content.append(node("span",p.category,"product-category"),node("h3",p.name,"product-name"),node("p",p.description||p.sku,"product-description"));
     const price=node("div",undefined,"product-price-row");price.append(node("strong",formatMoney(p.price),"product-price"));
-    const stock=node("div",Number(p.available)>0?String(p.available)+" disponibles":"Sin stock",Number(p.available)>0?"product-stock":"product-stock out");
+    const stock=node("div",Number(p.available)>0?String(p.available)+" disponibles":"Agotado · consulta disponibilidad",Number(p.available)>0?"product-stock":"product-stock out");
     const actions=node("div",undefined,"product-actions");
     const detail=makeButton("Ver detalles","product-detail-button",()=>showProduct(p));
     if(Number(p.available)<=0){
@@ -296,7 +296,7 @@ function showProduct(p){
   $("detailCategory").textContent=p.category;
   $("detailDescription").textContent=p.description||"";
   $("detailPrice").textContent=formatMoney(p.price);
-  $("detailStock").textContent=Number(p.available)>0?String(p.available)+" disponibles":"Sin stock";
+  $("detailStock").textContent=Number(p.available)>0?String(p.available)+" disponibles":"Agotado. Consulta por WhatsApp";
   $("detailAdd").disabled=Number(p.available)<=0&&!contact;
   $("detailAdd").textContent=Number(p.available)>0?"Agregar al carrito":"Consultar stock por WhatsApp";
   const pictures=productImages(p);
