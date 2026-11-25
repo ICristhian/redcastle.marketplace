@@ -10,7 +10,7 @@ const LEGACY_ART={
 const FALLBACK_COLORS=["#e9eff3","#f0eae6","#f0eee7","#e7edf3","#e8eee9","#ebe9f1","#f0e9e4","#f0ece4"];
 const RETURN_KEY="redcastle-return-section-v1";
 const HANDOFF_KEY="redcastle-legacy-handoff-v1";
-const VALID_SECTIONS=new Set(["inicio","productos","categorias","reservas","nosotros","carrito"]);
+const VALID_SECTIONS=new Set(["inicio","productos","categorias","reservas","perfil","nosotros","carrito"]);
 const STATUS={
   pending_contact:"Solicitud recibida · pendiente de aprobación",
   confirmed:"Reserva aprobada · producto apartado",
@@ -116,6 +116,9 @@ async function refreshSession(){
   $("signOut").hidden=!user;
   $("authSection").hidden=!!user;
   $("adminLink").hidden=profile?.role!=="admin";
+  $("profileLink").hidden=!user;
+  $("profileNav").hidden=!user;
+  renderProfile();
   renderProducts();
   renderCart();
 }
@@ -208,6 +211,9 @@ function renderCart(){
   const box=$("cartItems");box.replaceChildren();
   const count=cart.reduce((n,i)=>n+i.quantity,0);
   $("cartCount").textContent=count;$("cartTitleCount").textContent="("+count+")";
+  $("floatingCartCount").textContent=count;
+  $("floatingCart").setAttribute("aria-label","Abrir carrito: "+count+" artículos");
+  $("floatingCart").classList.toggle("has-items",count>0);
   $("openCart").setAttribute("aria-label","Abrir carrito de reservas, "+count+" artículos");
   let total=0;
   if(!cart.length){
@@ -333,13 +339,43 @@ function whatsappLink(r){
   lines.push("Quisiera confirmar disponibilidad y coordinar el recojo en tienda. Entiendo que el producto se separa solo al aprobarse la solicitud.");
   return "https://wa.me/"+contact+"?text="+encodeURIComponent(lines.join("\n"));
 }
+function renderProfile(){
+  const el=$("profileIdentity");el.replaceChildren();
+  if(!user){
+    el.append(node("h3","Tu cuenta"),node("p","Inicia sesión con Google para consultar únicamente tus datos y reservas."));
+    const login=makeButton("Iniciar sesión","btn btn-primary",()=>showAuth("perfil"));
+    el.append(login);return;
+  }
+  const attrs=user.user_metadata||{};
+  const name=profile?.display_name||attrs.full_name||attrs.name||"Cliente Redcastle";
+  const avatar=node("div",name.trim().charAt(0).toUpperCase()||"C","profile-avatar");
+  avatar.setAttribute("aria-hidden","true");
+  el.append(avatar,node("h3",name,"profile-name"));
+  const email=user.email||"Correo no disponible";
+  el.append(node("p",email,"profile-email"));
+  const origin=user.app_metadata?.provider||"Cuenta conectada";
+  el.append(node("p","Acceso con "+({google:"Google",azure:"Microsoft"}[origin]||origin),"profile-provider"));
+  const fine=node("p","Datos proporcionados por tu cuenta de acceso; las reservas solo las puedes consultar tú.","profile-meta");
+  el.append(fine);
+}
 function renderReservations(){
   const box=$("reservationList");box.replaceChildren();
   if(!user){box.append(node("p","Inicia sesión para ver tus reservas."));return;}
   if(!reservations.length){box.append(node("p","Aún no tienes reservas."));return;}
-  for(const r of reservations){
+  const openStatuses=new Set(["pending_contact","confirmed","ready_for_pickup","paid","delivered_unpaid","legacy_sale"]);
+  const ordered=[...reservations].sort((a,b)=>{
+    const ap=openStatuses.has(a.status)?0:1;
+    const bp=openStatuses.has(b.status)?0:1;
+    return ap-bp||new Date(b.created_at)-new Date(a.created_at);
+  });
+  const active=ordered.filter(r=>openStatuses.has(r.status)).length;
+  const overview=node("p",active?active+" solicitud(es) en seguimiento · "+(ordered.length-active)+" finalizadas o cerradas":"Todas tus solicitudes están cerradas.","profile-reservation-summary");
+  box.append(overview);
+  for(const r of ordered){
     const entry=node("article",undefined,"reservation-entry");
-    entry.append(node("div",STATUS[r.status]||r.status,"reservation-status"));
+    const level=["pending_contact","legacy_sale","delivered_unpaid"].includes(r.status)?"attention":["confirmed","ready_for_pickup","paid"].includes(r.status)?"progress":"closed";
+    entry.classList.add("reservation-"+level);
+    entry.append(node("div",STATUS[r.status]||r.status,"reservation-status status-"+level));
     entry.append(node("strong",r.code),node("p",new Date(r.created_at).toLocaleString("es-PE")+" · "+formatMoney(r.total)));
     const summary=(r.reservation_items||[]).map(x=>x.quantity+" × "+x.product_name).join(", ");
     entry.append(node("p",summary));
@@ -367,7 +403,7 @@ async function reserve(){
     $("cartDialog").close();
     const url=record&&whatsappLink(record);
     if(url)location.assign(url);
-    else{location.hash="reservas";notify("Solicitud registrada sin apartar stock. Puedes abrir WhatsApp desde Mis reservas.");}
+    else{location.hash="perfil";notify("Solicitud registrada sin apartar stock. Puedes abrir WhatsApp desde Mi perfil.");}
   }catch(error){notify(safeError(error),true);}
   finally{busy=false;renderCart();renderProducts();}
 }
@@ -416,6 +452,7 @@ async function loadAll(){
 async function start(){
   $("year").textContent=new Date().getFullYear();
   $("openCart").addEventListener("click",openCart);
+  $("floatingCart").addEventListener("click",openCart);
   $("closeCart").addEventListener("click",()=>$("cartDialog").close());
   $("cartDialog").addEventListener("click",e=>{if(e.target===$("cartDialog"))$("cartDialog").close();});
   $("clearCart").addEventListener("click",clearCart);
