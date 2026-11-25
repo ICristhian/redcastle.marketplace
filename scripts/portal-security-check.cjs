@@ -71,6 +71,16 @@ assert.ok(read("public/js/admin.js").includes('from("inventory_movements")'),"in
 assert.ok(read("public/admin.html").includes('id="stockAdjustForm"'),"reasoned manual stock form exists");
 assert.ok(read("public/js/admin.js").includes("Anular pago y reponer stock"),"paid-order reversal is available");
 assert.ok(read("public/portal.html").includes('id="continueShopping"'),"side cart has continue shopping button");
+assert.ok(read("public/index.html").includes('id="perfil"')&&read("public/portal.html").includes('id="profileIdentity"'),"profile contains private account and reservation summary");
+assert.ok(read("public/js/retail-portal.js").includes("function renderProfile()"),"profile content is session-aware");
+assert.ok(read("public/js/retail-portal.js").includes('reservation-"+level'),"customer reservations have semantic status styling");
+assert.ok(read("public/portal.html").includes('id="floatingCart"'),"floating cart button always remains available");
+assert.ok(read("public/js/retail-portal.js").includes('floatingCartCount'),"floating cart count reacts to real cart changes");
+assert.ok(read("public/admin.html").includes('id="inventorySearch"')&&read("public/admin.html").includes('id="inventoryStatus"'),"admin stock has search and availability filter");
+assert.ok(read("public/js/admin.js").includes("function renderInventory()"),"stock filters are applied client-side");
+assert.ok(read("public/js/admin.js").includes("priority[a.status]"),"admin reservation queue prioritizes outstanding actions");
+assert.ok(read("public/admin.html").includes('id="reservationOverview"'),"admin queue has accessible status counts");
+
 assert.ok(read("public/js/retail-portal.js").includes('consultOutOfStock(p)'),"out-of-stock products offer WhatsApp inquiries");
 assert.ok(read("public/css/portal.css").includes("#reservationsTable>tr"),"admin reservations adapt to mobile cards");
 assert.ok(read("public/css/retail-portal.css").includes("@media(max-width:410px)"),"responsive retail cards cover small phones");
