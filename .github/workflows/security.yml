@@ -2,7 +2,7 @@ name: Security checks
 
 on:
   push:
-    branches: [main, "security/**"]
+    branches: [main, "security/**", "feature/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -26,5 +26,49 @@ jobs:
           persist-credentials: false
       - name: Check JavaScript syntax
         run: node --check public/js/store.js
+      - name: Check JavaScript module syntax
+        run: |
+          for file in public/js/config.js public/js/backend.js public/js/portal.js public/js/retail-portal.js public/js/admin.js; do
+            node --input-type=module --check < "$file"
+          done
       - name: Check site security policies
         run: node scripts/security-check.cjs
+      - name: Check portal security assertions
+        run: node scripts/portal-security-check.cjs
+
+  bundle-first-party-sdk:
+    name: Build local Supabase browser SDK
+    needs: static-security
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feature/reservation-portal' && !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: feature/reservation-portal
+          persist-credentials: true
+      - name: Install pinned dependencies
+        run: |
+          if test -f package-lock.json; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Build self-hosted SDK module
+        run: npm run build:sdk
+      - name: Verify self-hosted module syntax
+        run: |
+          test -s public/js/vendor/supabase.mjs
+          node --check public/js/vendor/supabase.mjs
+      - name: Commit pinned bundle and package lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json public/js/vendor/
+          if ! git diff --cached --quiet; then
+            git commit -m "build: pin and vendor local Supabase SDK [skip ci]"
+            git push origin HEAD:feature/reservation-portal
+          fi

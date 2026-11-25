@@ -1,0 +1,19 @@
+{
+  "name": "redcastle-marketplace",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Redcastle portal frontend - local Supabase browser bundle",
+  "scripts": {
+    "build:sdk": "node scripts/bundle-sdk.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.57.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

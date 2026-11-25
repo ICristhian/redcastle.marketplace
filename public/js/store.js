@@ -137,6 +137,7 @@
     $("openCart").setAttribute("aria-label","Abrir carrito de compras, " + count + (count === 1 ? " artículo" : " artículos"));
     $("cartSubtotal").textContent = money(sum());
     $("clearCart").disabled = !count;
+    $("transferToPortal").disabled = !count;
     const items = $("cartItems"); items.replaceChildren();
     if (!count) {
       const empty = document.createElement("div");
@@ -192,6 +193,22 @@
     if (e.target === $("cartDialog")) $("cartDialog").close();
   });
   $("clearCart").addEventListener("click",() => { cart = {}; saveCart(); renderCart(); showToast("Carrito vaciado."); });
+  $("transferToPortal").addEventListener("click",() => {
+    if (!itemCount()) return;
+    // Solo IDs de producto conocidos y cantidades enteras, sin precios editables.
+    const selection = {};
+    for (const p of PRODUCTS) {
+      const quantity = cart[p.id];
+      if (Number.isInteger(quantity) && quantity>=1 && quantity<=MAX_QTY) selection[p.id]=quantity;
+    }
+    try {
+      sessionStorage.setItem("redcastle-legacy-handoff-v1",JSON.stringify(selection));
+      sessionStorage.setItem("redcastle-return-section-v1","carrito");
+      location.assign("/portal.html#carrito");
+    } catch {
+      showToast("No se pudo transferir la selección. Revisa el almacenamiento de Opera.");
+    }
+  });
   $("siteSearch").addEventListener("input",(e) => { searchText = e.target.value.trim().toLocaleLowerCase("es"); renderProducts(); });
   $("sortSelect").addEventListener("change",(e) => { sortOrder = e.target.value; renderProducts(); });
   $("resetFilters").addEventListener("click",() => { $("siteSearch").value = ""; searchText = ""; setCategory("Todos",false); });

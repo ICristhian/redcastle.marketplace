@@ -7,7 +7,7 @@ const root = path.resolve(__dirname,"../public");
 const read = file => fs.readFileSync(path.join(root,file),"utf8");
 const headers = read("_headers");
 const html = read("index.html");
-const js = read("js/store.js");
+const js = read("js/retail-portal.js");
 const svg = read("assets/products.svg");
 let checks = 0;
 function test(name,condition) {
@@ -15,7 +15,7 @@ function test(name,condition) {
   checks++;
   process.stdout.write("✓ " + name + "\n");
 }
-const requiredFiles = ["index.html","css/retail.css","js/store.js","assets/products.svg","assets/favicon.svg","_headers"];
+const requiredFiles = ["index.html","portal.html","css/retail.css","css/retail-portal.css","js/retail-portal.js","js/vendor/supabase.mjs","assets/products.svg","assets/favicon.svg","_headers"];
 for (const file of requiredFiles) test("Archivo requerido: " + file,fs.existsSync(path.join(root,file)));
 
 const header = name => {
@@ -38,9 +38,15 @@ test("HTML de prueba con meta noindex",/name="robots" content="noindex, nofollow
 test("HTML sin scripts embebidos",!/<script\b(?![^>]*\bsrc=)[^>]*>/i.test(html));
 test("HTML sin manejadores onclick / onerror",!/\son(?:click|error|load|mouseover|focus)\s*=/i.test(html));
 test("JavaScript sin eval/innerHTML",!/(?:\beval\s*\(|\binnerHTML\b|\bouterHTML\b|document\.write\s*\(|new\s+Function\s*\()/i.test(js));
-test("Carrito usa texto en el DOM",js.includes(".textContent"));
-test("Carrito restringe cantidades",js.includes("MAX_QTY = 10") && js.includes("Number.isInteger(q)"));
-test("Botón checkout deshabilitado",/<button class="checkout-button" disabled type="button">/.test(html));
-test("Sin fuentes externas en HTML",!/<(?:script|link)\b[^>]*https?:\/\//i.test(html));
+test("Carrito usa nodos de texto seguros",js.includes(".textContent") && !js.includes("innerHTML"));
+test("Carrito persistente en Supabase",js.includes('from("cart_items")') && js.includes('rpc("reserve_cart")'));
+test("Carrito restringe cantidades",js.includes("Number.isInteger(quantity)") && js.includes("quantity>10"));
+test("Sin checkout ni pagos en línea",!html.includes("Finalizar compra") && html.includes('id="reserve"') && html.includes("Enviar solicitud"));
+test("Reserva inicia deshabilitada sin carrito",/<button class="checkout-button" id="reserve" type="button" disabled>/.test(html));
+test("Sin recursos externos en HTML",!/<(?:script|link)\b[^>]*https?:\/\//i.test(html));
+test("La raíz y el portal usan la misma tienda",html===read("portal.html"));
+test("Nosotros incluye mapa Google y horarios",html.includes('id="nosotros"') && html.includes("9:00 a. m. – 3:00 p. m.") && csp.includes("frame-src https://www.google.com"));
+test("El carrito es lateral",read("css/retail.css").includes("inset:0 0 0 auto"));
+test("Galería cargada desde Supabase",js.includes("product_images") && js.includes('getPublicUrl'));
 test("Ilustraciones SVG no incluyen scripts",!/<script\b|onload\s*=|javascript:/i.test(svg));
 console.log("\n" + checks + " verificaciones de seguridad local superadas.");
